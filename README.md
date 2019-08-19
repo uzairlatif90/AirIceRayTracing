@@ -3,7 +3,7 @@ C++ code which uses analytic ray tracing for tracing rays from any point in the 
 
 - MultiRayAirIceRefraction.C : This script takes in as arguments the antenna depth and the height of the ice layer. Then it loops over values of Tx Height and the ray launch angle and prints a file called "TableValues.txt" which contains the following columns:
 
--- the entry number, the Tx height, ice layer height, Tx height above the icelayer height, total horizontal distance on surface, total horizontal distance in ice, RayLaunchAngle at Tx, incident angle on ice and recieved angle in ice at the antenna inside this file
+-- the entry number, the Tx height, ice layer height, Tx height above the ice layer height, total horizontal distance traveled on the surface above ice, total horizontal distance traveled in ice, the initial ray launch angle at Tx, incident angle on ice and received angle in ice at the antenna inside this file
 
 -- The step size for Tx height loop is set at 20 m and it starts at the maximum available height from the refractive index data to a step above the ice surface.
 
