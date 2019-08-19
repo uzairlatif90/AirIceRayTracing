@@ -9,7 +9,7 @@ C++ code which uses analytic ray tracing for tracing rays from any point in the 
 
 -- The step size for the ray launch angle loop goes from 91 deg to 179 deg in steps of 1 deg. Here 0 deg is vertically upwards
 
-- SingleRayAirIceRefraction.C : This script takes in as arguments the antenna depth, ice layer height, initial launch angle of the ray and height of the Tx. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere.
+- SingleRayAirIceRefraction.C : This script takes in as arguments the antenna depth, ice layer height, initial launch angle of the ray and height of the Tx. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere and ice.
 
 - SingleRayAirIceRefraction_wROOTGr.C : It is the same as the above script except that the only difference is that it makes plots of the ray path in ROOT and it can be run with just ROOT by doing: root -l SingleRayAirIceRefraction_wROOTGr.C
 
