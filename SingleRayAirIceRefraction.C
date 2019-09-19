@@ -223,8 +223,8 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
 ////Get the distance on the 2ndLayer at which the ray should hit given an incident angle such that it hits an target at depth of z0 m in the second layer.
 //// n_layer1 is the refractive index value of the previous layer at the boundary of the two mediums
 //// A,B and C values are the values required for n(z)=A+B*exp(Cz) for the second layer
-//// z0 is the starting height or depth
-//// z1 is the final height or depth
+//// TxDepth is the starting height or depth
+//// RxDepth is the final height or depth
 //// AirOrIce variable is used to determine whether we are working in air or ice as that sets the range for the GSL root finder.
 double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
   double *output=new double[3];
@@ -398,7 +398,7 @@ int main(int argc, char **argv){
     }
   }
   int SkipLayersAbove=skiplayer;
-  //cout<<"The tota number of layers that need to be skipped from above is "<<skiplayer<<endl;
+  //cout<<"The total number of layers that need to be skipped from above is "<<skiplayer<<endl;
 
   ////Find out how many atmosphere layers are below the ice height which we do not need
   skiplayer=0;
@@ -422,7 +422,7 @@ int main(int argc, char **argv){
   double StartAngle=0;
   double A=0,B=0,C=0;
   double TotalHorizontalDistance=0;
-  vector <double> layerAs,layerBs,layerCs,layerLs;////vector for storing the A,B,C and L values of each of the atmosphere layes as the ray passes through them
+  vector <double> layerAs,layerBs,layerCs,layerLs;////vector for storing the A,B,C and L values of each of the atmosphere layers as the ray passes through them
 
   double c0, c1;////variables to store the fit results from the GSL linear fitter for y=c0+c1*x. Here we are trying to fit the function: log(n(h)-1)=log(B)+C*h which basically comes from n(h)=A+B*exp(C*h)
   double cov00, cov01, cov11, chisq;////variables to store the covariance matrix elements outputted the GSL linear fitting function
@@ -453,7 +453,7 @@ int main(int argc, char **argv){
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
     Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
 
-    ////Set the staopping height of the ray for propogation for that layer
+    ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){
       ////If this is the last layer then set the stopping height to be the height of the ice layer
       StopHeight=IceLayerHeight;
@@ -636,7 +636,7 @@ int main(int argc, char **argv){
       //cout<<ipoints<<" "<<Refracted_x<<" "<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<i-StraightLine_y<<endl;
       //aout<<ipoints<<" "<<Refracted_x<<" "<<i<<endl;
 
-      ////If you want to check the the transition between different layers
+      ////If you want to check the the transition between different layers uncomment these lines
       //if(fabs(i-LayerStopHeight)<10){
   	//cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
       //}

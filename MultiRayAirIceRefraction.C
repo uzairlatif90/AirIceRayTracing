@@ -223,8 +223,8 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
 ////Get the distance on the 2ndLayer at which the ray should hit given an incident angle such that it hits an target at depth of z0 m in the second layer.
 //// n_layer1 is the refractive index value of the previous layer at the boundary of the two mediums
 //// A,B and C values are the values required for n(z)=A+B*exp(Cz) for the second layer
-//// z0 is the starting height or depth
-//// z1 is the final height or depth
+//// TxDepth is the starting height or depth
+//// RxDepth is the final height or depth
 //// AirOrIce variable is used to determine whether we are working in air or ice as that sets the range for the GSL root finder.
 double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
   double *output=new double[3];
@@ -367,8 +367,8 @@ int main(int argc, char **argv){
   gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline,flattened_h_data.size());
   gsl_spline_init(spline, flattened_h_data.data(), flattened_nh_data.data(), flattened_h_data.size());
 
-  ////Define variables for the loop over Tx heigh and ray launch angle
-  double RayLaunchAngle=0;////Set zero for now. This variable define the initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
+  ////Define variables for the loop over Tx height and ray launch angle
+  double RayLaunchAngle=0;////Set zero for now. This variable defines the initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
   double TxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];////Maximum height available with the refractive index data
 
   ////Set the variables for the for loop that will loop over the launch angle values. All values are in degrees
