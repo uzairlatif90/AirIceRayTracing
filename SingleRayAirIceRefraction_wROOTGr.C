@@ -12,6 +12,7 @@
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_fit.h>
 #include <gsl/gsl_spline.h>
+#include <sys/time.h>
 
 const double pi=4.0*atan(1.0); /**< Gives back value of Pi */
 const double spedc=299792458.0; /**< Speed of Light in m/s */
@@ -274,19 +275,19 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   //cout<<"The propagation time in 2ndLayer is: "<<RayTimeIn2ndLayer<<" s"<<endl;
 
   ///////calculate the initial angle when the ray enters the 2ndLayer. This should be the same as RayAngleInside2ndLayer. This provides a good sanity check to make sure things have worked out.
-  // gsl_function F4;
-  // double result, abserr;
-  // F4.function = &fD;
-  // F4.params = &params2;
-  // gsl_deriv_central (&F4, TxDepth, 1e-8, &result, &abserr);
-  // AngleOfEntryIn2ndLayer=atan(result)*(180.0/pi);
-  // if(TxDepth==RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
-  //   AngleOfEntryIn2ndLayer=180-ReceiveAngle;
-  // }
-  // if(TxDepth!=RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
-  //   AngleOfEntryIn2ndLayer=90;
-  // }
-  // cout<<" ,AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/pi)<<endl;
+  gsl_function F4;
+  double result, abserr;
+  F4.function = &fD;
+  F4.params = &params2;
+  gsl_deriv_central (&F4, TxDepth, 1e-8, &result, &abserr);
+  AngleOfEntryIn2ndLayer=atan(result)*(180.0/pi);
+  if(TxDepth==RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
+    AngleOfEntryIn2ndLayer=180-ReceiveAngle;
+  }
+  if(TxDepth!=RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
+    AngleOfEntryIn2ndLayer=90;
+  }
+  cout<<" ,AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/pi)<<endl;
 
   output[0]=x1;
   output[1]=ReceiveAngle*(180/pi);
@@ -325,6 +326,11 @@ void SingleRayAirIceRefraction_wROOTGr(){
   double TxHeight=20000;////Height of the source
   double IceLayerHeight=3000;////Height where the ice layer starts off
 
+  ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
+  readATMpar();
+  readnhFromFile();
+  int MaxLayers=h_data.size();////store the total number of layers present in the data
+  
   if(TxHeight>h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]){
     ////Maximum height available with the refractive index data
     cout<<"Tx Height is set higher than maximum available height for atmospheric refractive index which is "<<h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]<<endl;
@@ -341,10 +347,6 @@ void SingleRayAirIceRefraction_wROOTGr(){
   ////Print out the ray path x and y values in a file
   ofstream aout("RayPathinAirnIce.txt");
   
-  ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
-  readATMpar();
-  readnhFromFile();
-  int MaxLayers=h_data.size();////store the total number of layers present in the data
   
   ////Flatten out the height and the refractive index vectors to be used for setting the up the spline interpolation.
   vector <double> flattened_h_data=flatten(h_data);
