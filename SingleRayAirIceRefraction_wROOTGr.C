@@ -193,6 +193,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
 
   T = gsl_root_fsolver_brent;
   s = gsl_root_fsolver_alloc (T);
+  gsl_set_error_handler_off();
   gsl_root_fsolver_set (s, &F, x_lo, x_hi);
 
   //printf ("using %s method\n", gsl_root_fsolver_name (s));
@@ -237,17 +238,24 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   double AngleOfEntryIn2ndLayer=0;////Angle at which the ray enters the layer
 
   double SurfaceRayIncidentAngle=IncidentAng*(pi/180.0);////Angle at which the ray is incident on the second layer
-  double RayAngleInside2ndLayer=asin((n_layer1/(A+B*exp(-C*TxDepth)))*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
+  double RayAngleInside2ndLayer=0;////Use Snell's Law to find the angle of transmission in the 2ndlayer
 
-  double GSLFnLimit=90*(pi/180);
+  double nzRx=A+B*exp(-C*RxDepth);
+  double nzTx=A+B*exp(-C*TxDepth);
+  double GSLFnLimit=0;
+  double LimitAngle=0;
+
   if(AirOrIce==0){
-    //cout<<"we are in ice"<<endl;
-    GSLFnLimit=50*(pi/180);
+    //cout<<"in ice"<<endl;
+    LimitAngle=asin(nzTx/nzRx);
   }
   if(AirOrIce==1){
-    //cout<<"we are in air"<<endl;
-    GSLFnLimit=88.5*(pi/180);
+    //cout<<"in air"<<endl;
+    LimitAngle=asin(nzTx/nzRx);
   }
+
+  GSLFnLimit=LimitAngle;
+  RayAngleInside2ndLayer=asin((n_layer1/nzTx)*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
   
   ////calculate the angle at which the target receives the ray
   gsl_function F1;
@@ -258,7 +266,7 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   //cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/pi)<<" deg"<<endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
-  Lvalue=(A+B*exp(-C*RxDepth))*sin(ReceiveAngle);
+  Lvalue=nzRx*sin(ReceiveAngle);
   struct fDnfR_params params2 = {A, B, -C, Lvalue};
   x1=+fD(RxDepth,&params2)-fD(TxDepth,&params2);
   if(AirOrIce==1){
@@ -287,7 +295,7 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   if(TxDepth!=RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
     AngleOfEntryIn2ndLayer=90;
   }
-  cout<<" ,AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/pi)<<endl;
+  //cout<<"AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/pi)<<endl;
 
   output[0]=x1;
   output[1]=ReceiveAngle*(180/pi);
@@ -316,15 +324,16 @@ static timestamp_t get_timestamp (){
   return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
 }
 
-void SingleRayAirIceRefraction_wROOTGr(){
+void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngle, double TxHeight, double IceLayerHeight){
+  //void SingleRayAirIceRefraction_wROOTGr(){
 
   ////For recording how much time the process took
   timestamp_t t0 = get_timestamp();
   
-  double AntennaDepth=200;////Depth of antenna in the ice
-  double RayLaunchAngle=170;////Initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
-  double TxHeight=20000;////Height of the source
-  double IceLayerHeight=3000;////Height where the ice layer starts off
+  // double AntennaDepth=200;////Depth of antenna in the ice
+  // double RayLaunchAngle=124.765;////Initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
+  // double TxHeight=5000;////Height of the source
+  // double IceLayerHeight=3000;////Height where the ice layer starts off
 
   ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
   readATMpar();
@@ -568,11 +577,13 @@ void SingleRayAirIceRefraction_wROOTGr(){
   ////This section now is for storing and plotting the ray. We calculate the x and y coordinates of the ray as it travels through the air and ice
   
   TMultiGraph *mg=new TMultiGraph();
+  TMultiGraph *mgB=new TMultiGraph();
   
   TGraph *grRefracted=new TGraph();
   TGraph *grStraight=new TGraph();
   TGraph *grResidual=new TGraph();
   TGraph *grAirIce=new TGraph();
+  TGraph *grIceLayer=new TGraph();
 
   ////Make a straight line at the same launch angle as the refracted ray in air to calculate the residual
   double StraightLine_slope=tan(pi/2-RayLaunchAngle*(pi/180));
@@ -590,7 +601,7 @@ void SingleRayAirIceRefraction_wROOTGr(){
 
   ////Start looping over the layers to trace out the ray
   for(int il=0;il<MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
-
+    
     ////Get and Set the A,B,C and L parameters for the layer
     struct fDnfR_params params2 = {layerAs[il], layerBs[il], layerCs[il], layerLs[il]};
 
@@ -607,9 +618,10 @@ void SingleRayAirIceRefraction_wROOTGr(){
       LayerStopHeight=IceLayerHeight-1;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
-      LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersBelow-il-1]/100)-1;
+      LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
     }
-    //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<endl;
+    
+    //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
 
     ////Start tracing out the ray as it propagates through the layer
     for(double i=LayerStartHeight;i>LayerStopHeight;i--){
@@ -630,7 +642,8 @@ void SingleRayAirIceRefraction_wROOTGr(){
       grAirIce->SetPoint(ipoints,Refracted_x,i);
       grRefracted->SetPoint(ipoints,Refracted_x,i);
       grStraight->SetPoint(ipoints,Refracted_x,StraightLine_y);
-
+      grIceLayer->SetPoint(ipoints,Refracted_x,IceLayerHeight);
+      
       ////To make sure that the residual in air is only caculated above the ice surface
       if(StraightLine_y>=IceLayerHeight){
   	grResidual->SetPoint(ipoints,Refracted_x,i-StraightLine_y);
@@ -640,13 +653,13 @@ void SingleRayAirIceRefraction_wROOTGr(){
       aout<<ipoints<<" "<<Refracted_x<<" "<<i<<endl;
 
       ////If you want to check the the transition between different layers uncomment these lines
-      //if(fabs(i-LayerStopHeight)<10){
-  	//cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
-      //}
+      // if(fabs(i-LayerStopHeight)<10){
+      // 	cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
+      // }
       
-      //if(fabs(i-LayerStartHeight)<10){
-  	//cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
-      //}
+      // if(fabs(i-LayerStartHeight)<10){
+      // 	cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
+      // }
       
       ipoints++;
       LastHeight=i;
@@ -658,6 +671,7 @@ void SingleRayAirIceRefraction_wROOTGr(){
   struct fDnfR_params params2 = {A_ice, B_ice, C_ice, LvalueIce};
   for(int i=0;i>-(AntennaDepth+1);i--){
     grAirIce->SetPoint(ipoints,TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2),(double)i+IceLayerHeight);
+    grIceLayer->SetPoint(ipoints,TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2),IceLayerHeight);
     aout<<ipoints<<" "<<TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2)<<" "<<(double)i+IceLayerHeight<<endl;
     ipoints++;
   }
@@ -688,11 +702,15 @@ void SingleRayAirIceRefraction_wROOTGr(){
   grResidual->Draw("AL");
   //grResidual->Fit("pol1","","");
 
-  grAirIce->SetTitle("RayPath through Air and Ice;Distance (m); Height (m)");
+  mgB->SetTitle("RayPath through Air and Ice;Distance (m); Height (m)");
   grAirIce->SetMarkerStyle(20);
+  grIceLayer->SetMarkerStyle(20);
+  grIceLayer->SetMarkerColor(kBlue);
+  mgB->Add(grAirIce);
+  mgB->Add(grIceLayer);
   TCanvas *cb=new TCanvas("cb","cb");
   cb->cd();
-  grAirIce->Draw("ALP");
+  mgB->Draw("ALP");
 
   delete accelerator;
   delete spline;

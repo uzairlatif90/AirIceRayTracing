@@ -194,6 +194,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
 
   T = gsl_root_fsolver_brent;
   s = gsl_root_fsolver_alloc (T);
+  gsl_set_error_handler_off();
   gsl_root_fsolver_set (s, &F, x_lo, x_hi);
 
   //printf ("using %s method\n", gsl_root_fsolver_name (s));
@@ -238,17 +239,24 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   double AngleOfEntryIn2ndLayer=0;////Angle at which the ray enters the layer
 
   double SurfaceRayIncidentAngle=IncidentAng*(pi/180.0);////Angle at which the ray is incident on the second layer
-  double RayAngleInside2ndLayer=asin((n_layer1/(A+B*exp(-C*TxDepth)))*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
+  double RayAngleInside2ndLayer=0;////Use Snell's Law to find the angle of transmission in the 2ndlayer
 
-  double GSLFnLimit=90*(pi/180);
+  double nzRx=A+B*exp(-C*RxDepth);
+  double nzTx=A+B*exp(-C*TxDepth);
+  double GSLFnLimit=0;
+  double LimitAngle=0;
+
   if(AirOrIce==0){
-    //cout<<"we are in ice"<<endl;
-    GSLFnLimit=50*(pi/180);
+    //cout<<"in ice"<<endl;
+    LimitAngle=asin(nzTx/nzRx);
   }
   if(AirOrIce==1){
-    //cout<<"we are in air"<<endl;
-    GSLFnLimit=89.1*(pi/180);
+    //cout<<"in air"<<endl;
+    LimitAngle=asin(nzTx/nzRx);
   }
+
+  GSLFnLimit=LimitAngle;
+  RayAngleInside2ndLayer=asin((n_layer1/nzTx)*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
   
   ////calculate the angle at which the target receives the ray
   gsl_function F1;
@@ -259,7 +267,7 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   //cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/pi)<<" deg"<<endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
-  Lvalue=(A+B*exp(-C*RxDepth))*sin(ReceiveAngle);
+  Lvalue=nzRx*sin(ReceiveAngle);
   struct fDnfR_params params2 = {A, B, -C, Lvalue};
   x1=+fD(RxDepth,&params2)-fD(TxDepth,&params2);
   if(AirOrIce==1){

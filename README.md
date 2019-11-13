@@ -11,7 +11,7 @@ C++ code which uses analytic ray tracing for tracing rays from any point in the 
 
 - SingleRayAirIceRefraction.C : This script takes in as arguments the antenna depth, ice layer height, initial launch angle of the ray and height of the Tx. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere and ice.
 
-- SingleRayAirIceRefraction_wROOTGr.C : It is the same as the above script except that the only difference is that it makes plots of the ray path in ROOT and it can be run with just ROOT by doing: root -l SingleRayAirIceRefraction_wROOTGr.C
+- SingleRayAirIceRefraction_wROOTGr.C : It is the same as the above script except that the only difference is that it makes plots of the ray path in ROOT.
 
 - Atmosphere.dat: This file has been generated with GDAS tool that comes with CORSIKA. The command that was used to generate this file was: ./gdastool -t 1533600000 -o Atmosphere.dat -c -89.9588 -109.794 -m -5 -v -g
 
@@ -39,3 +39,8 @@ To run you just have to do:
 - Run it: `./MultiRayAirIceRefraction 200 3000`
 - In this case the example arguments are: Antenna Depth is set at 200 m, Ice Layer Height is set as 3000 m
 - The main is at the bottom of the code, which you can modify to your liking.
+
+### SingleRayAirIceRefraction_wROOTGr.C as standalone package
+To run you just have to do:
+- `root -l 'SingleRayAirIceRefraction_wROOTGr.C('200','170','20000','3000')'`
+- In this case the example arguments are: Antenna Depth is set at 200 m, The Ray Launch Angle is set at 170 deg, Tx Height is set at 20000 m, Ice Layer Height is set as 3000 m
