@@ -13,6 +13,12 @@ C++ code which uses analytic ray tracing for tracing rays from any point in the 
 
 - SingleRayAirIceRefraction_wROOTGr.C : It is the same as the above script except that the only difference is that it makes plots of the ray path in ROOT.
 
+- Air2IceRayTracing.C : This script does the same thing as SingleRayAirIceRefraction.C but the only difference is that it calculates the launch angle itself given a point in air and a point in ice. So it will calculate the whole path for you if you just tell it the coordinates of those two points.
+
+  - It takes in as arguments the Tx height in air, horizontal distance btw Tx in air and Rx in ice, height of the ice layer and depth of the antenna or Rx in ice. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere and ice.
+
+- Air2IceRayTracing_wROOTplot.C : It is the same as the above script except that the only difference is that it makes plots of the ray path in ROOT.
+
 - Atmosphere.dat: This file has been generated with GDAS tool that comes with CORSIKA. The command that was used to generate this file was: ./gdastool -t 1533600000 -o Atmosphere.dat -c -89.9588 -109.794 -m -5 -v -g
 
   - These are the coordinates for the ARA2 station at the South Pole.
@@ -44,3 +50,15 @@ To run you just have to do:
 To run you just have to do:
 - `root -l 'SingleRayAirIceRefraction_wROOTGr.C('200','170','20000','3000')'`
 - In this case the example arguments are: Antenna Depth is set at 200 m, The Ray Launch Angle is set at 170 deg, Tx Height is set at 20000 m, Ice Layer Height is set as 3000 m
+
+### Air2IceRayTracing.C as standalone package
+To run you just have to do:
+- Make it: `make Air2IceRayTracing`
+- Run it: `./Air2IceRayTracing 5000 1000 3000 200`
+- In this case the example arguments are: Tx Height in air is set at 5000 m, the horizontal distance btw Tx in air and Rx in ice is set at 1000 m, Ice Layer Height is set at 3000 m, Antenna Depth is set at 200 m
+- The main is at the bottom of the code, which you can modify to your liking.
+
+### Air2IceRayTracing_wROOTplot.C as standalone package
+To run you just have to do:
+- `root -l 'Air2IceRayTracing_wROOTplot.C('5000','1000','3000','200')'`
+- In this case the example arguments are: Tx Height in air is set at 5000 m, the horizontal distance btw Tx in air and Rx in ice is set at 1000 m, Ice Layer Height is set at 3000 m, Antenna Depth is set at 200 m
