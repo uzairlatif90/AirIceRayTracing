@@ -146,7 +146,7 @@ double fdxdz(double x,void *params){
 }
 
 ////The function used to calculate ray propogation time in ice
-struct ftimeD_params { double a, b, c, speedc,l; };
+struct ftimeD_params { double a, b, c, speedc,l; int airorice; };
 double ftimeD(double x,void *params){
 
   struct ftimeD_params *p= (struct ftimeD_params *) params;
@@ -155,8 +155,17 @@ double ftimeD(double x,void *params){
   double C = p->c;
   double Speedc = p->speedc;
   double L = p->l;
+  int AirOrIce=p->airorice;
+
+  double result=0;
+  if(AirOrIce==0){//in ice
+    result=(1.0/(Speedc*C*sqrt(pow(Getnz_ice(x),2)-L*L)))*(pow(Getnz_ice(x),2)-L*L+(C*x-log(A*Getnz_ice(x)-L*L+sqrt(A*A-L*L)*sqrt(pow(Getnz_ice(x),2)-L*L)))*(A*A*sqrt(pow(Getnz_ice(x),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(Getnz_ice(x),2)-L*L)*log(Getnz_ice(x)+sqrt(pow(Getnz_ice(x),2)-L*L)) );
+  }
+  if(AirOrIce==1){//in air
+    result=(1.0/(Speedc*C*sqrt(pow(Getnz_air(x),2)-L*L)))*(pow(Getnz_air(x),2)-L*L+(C*x-log(A*Getnz_air(x)-L*L+sqrt(A*A-L*L)*sqrt(pow(Getnz_air(x),2)-L*L)))*(A*A*sqrt(pow(Getnz_air(x),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(Getnz_air(x),2)-L*L)*log(Getnz_air(x)+sqrt(pow(Getnz_air(x),2)-L*L)) );
+  }
   
-  return (1.0/(Speedc*C*sqrt(pow(Getnz_ice(x),2)-L*L)))*(pow(Getnz_ice(x),2)-L*L+(C*x-log(A*Getnz_ice(x)-L*L+sqrt(A*A-L*L)*sqrt(pow(Getnz_ice(x),2)-L*L)))*(A*A*sqrt(pow(Getnz_ice(x),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(Getnz_ice(x),2)-L*L)*log(Getnz_ice(x)+sqrt(pow(Getnz_ice(x),2)-L*L)) );
+  return result;
 }
 
 ////This function is used to measure the amount of time the code takes to run
@@ -244,13 +253,13 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   struct ftimeD_params params3b;
   if(AirOrIce==0){
     //cout<<"in ice"<<endl;
-    params3a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), spedc, Lvalue};
-    params3b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), spedc, Lvalue};
+    params3a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), spedc, Lvalue,0};
+    params3b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), spedc, Lvalue,0};
   }
   if(AirOrIce==1){
     //cout<<"in air"<<endl;
-    params3a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), spedc, Lvalue};
-    params3b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), spedc, Lvalue};
+    params3a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), spedc, Lvalue,1};
+    params3b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), spedc, Lvalue,1};
   }
   RayTimeIn2ndLayer=+ftimeD(RxDepth,&params3a)-ftimeD(TxDepth,&params3b);
   if(AirOrIce==1){
