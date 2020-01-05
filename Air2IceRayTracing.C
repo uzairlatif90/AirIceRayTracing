@@ -464,7 +464,7 @@ int main(int argc, char **argv){
       LayerStartHeight=AirSrcHeight;
     
       ////If this is the last layer then set the stopping height to be the height of the ice layer
-      LayerStopHeight=IceLayerHeight-1;
+      LayerStopHeight=IceLayerHeight;
     
       //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
 
