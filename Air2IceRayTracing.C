@@ -50,7 +50,7 @@ double GetB_air(double z){
   double zabs=fabs(z);
   double B=0;
   
-  B=-0.000382116;
+  B=0.000382116;
   return B;
 }
 
@@ -94,7 +94,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
       r = gsl_root_fsolver_root (s);
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi,0, 0.001);
+      status = gsl_root_test_interval (x_lo, x_hi,0, 0.0001);
       
       //printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
       //if (status == GSL_SUCCESS){
@@ -167,14 +167,6 @@ double ftimeD(double x,void *params){
   return result; 
 }
 
-////This function is used to measure the amount of time the code takes to run
-typedef unsigned long long timestamp_t;
-static timestamp_t get_timestamp (){
-  struct timeval now;
-  gettimeofday (&now, NULL);
-  return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
-}
-
 ////Get the distance on the 2ndLayer at which the ray should hit given an incident angle such that it hits an target at depth of z0 m in the second layer.
 //// n_layer1 is the refractive index value of the previous layer at the boundary of the two mediums
 //// TxDepth is the starting height or depth
@@ -200,23 +192,21 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   double nzTx=0;
   double GSLFnLimit=0;
   
-  ////LimitAngle sets a limit on the range to which the GSL minimisation will work. This limit comes from the fact that in fdxdx() you have tan(asin(x)) which goes to infinity at x=1. In our case x=(nz(Z0)*sin(Angle))/nz(Z1) . Solving for Angle gives us our limit. 
-  double LimitAngle=0;
-
   if(AirOrIce==0){
     //cout<<"in ice"<<endl;
     A=A_ice;
     nzRx=Getnz_ice(RxDepth);
     nzTx=Getnz_ice(TxDepth);
-    LimitAngle=asin(nzTx/nzRx);
   }
   if(AirOrIce==1){
     //cout<<"in air"<<endl;
     A=A_air;
     nzRx=Getnz_air(RxDepth);
     nzTx=Getnz_air(TxDepth);
-    LimitAngle=asin(nzRx/nzTx);
   }
+
+  ////LimitAngle sets a limit on the range to which the GSL minimisation will work. This limit comes from the fact that in fdxdx() you have tan(asin(x)) which goes to infinity at x=1. In our case x=(nz(Z0)*sin(Angle))/nz(Z1) . Solving for Angle gives us our limit.
+  double LimitAngle=asin(nzTx/nzRx);
   
   GSLFnLimit=LimitAngle;
   RayAngleInside2ndLayer=asin((n_layer1/nzTx)*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
@@ -348,6 +338,14 @@ double MinimizeforLaunchAngle(double x, void *params){
   
 }
 
+////This function is used to measure the amount of time the code takes to run
+typedef unsigned long long timestamp_t;
+static timestamp_t get_timestamp (){
+  struct timeval now;
+  gettimeofday (&now, NULL);
+  return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
+}
+
 int main(int argc, char **argv){
   
   ////For recording how much time the process took
@@ -390,8 +388,6 @@ int main(int argc, char **argv){
   // double IceLayerHeight=3000;////Height where the ice layer starts off
   // double AntennaDepth=200;////Depth of antenna in the ice  
   bool StoreRayPath=false;
-  
-  
   
   gsl_function F1;
   struct MinforLAng_params params1 = { AirSrcHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};

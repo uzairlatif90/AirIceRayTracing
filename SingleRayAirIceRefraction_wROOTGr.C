@@ -16,9 +16,6 @@
 
 const double pi=4.0*atan(1.0); /**< Gives back value of Pi */
 const double spedc=299792458.0; /**< Speed of Light in m/s */
-const double A_ice=1.78;/**< Value of Parameter A for SP model of refractive index */
-const double B_ice=-0.43; /**< Value of Parameter B for SP model of refractive index */
-const double C_ice=0.0132;/**< Value of Parameter A for SP model of refractive index. There will be a negative sign for postive depth depth. */
 
 ////Define vectors to store data from the file
 vector <vector <double>> nh_data;////n(h) refractive index profile of the atmosphere as a function of height
@@ -138,49 +135,64 @@ int readnhFromFile(){
   return 0;
 }
 
-/////Functions used for Raytracing in Ice using the analytical solution
+////Set the value of the asymptotic parameter of the ice refractive index model
+const double A_ice=1.78;
 
-////Analytical solution describing the ray path in ice
-struct fDnfR_params { double a, b, c, l; };
-double fD(double x,void *params){
-  
-  struct fDnfR_params *p= (struct fDnfR_params *) params;
-  double A = p->a;
-  double B = p->b;
-  double C = p->c;
-  double L = p->l;
-  
-  return (L/C)*(1.0/sqrt(A*A-L*L))*(C*x-log(A*(A+B*exp(C*x))-L*L+sqrt(A*A-L*L)*sqrt(pow(A+B*exp(C*x),2)-L*L)));;
+////Get the value of the B parameter for the ice refractive index model
+double GetB_ice(double z){
+  double zabs=fabs(z);
+  double B=0;
+
+  B=-0.43;
+  return B;
 }
 
-////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
-struct fdxdz_params { double a, b, c, lang, z0,z1; };
-double fdxdz(double x,void *params){
+////Get the value of the C parameter for the ice refractive index model
+double GetC_ice(double z){
+  double zabs=fabs(z);
+  double C=0;
   
-  struct fdxdz_params *p= (struct fdxdz_params *) params;
-  double A = p->a;
-  double B = p->b;
-  double C = p->c;
-  double Lang = p->lang;
-  double Z0 = p->z0;
-  double Z1 = p->z1;
-  
-  return tan(asin( ((A+B*exp(C*Z0))*sin(x))/(A+B*exp(C*Z1)) ) ) - tan(Lang);
+  C=0.0132;
+  return C;
 }
 
-////The function used to calculate ray propogation time in ice
-struct ftimeD_params { double a, b, c, speedc,l; };
-double ftimeD(double x,void *params){
-
-  struct ftimeD_params *p= (struct ftimeD_params *) params;
-  double A = p->a;
-  double B = p->b;
-  double C = p->c;
-  double Speedc = p->speedc;
-  double L = p->l;
-  
-  return (1.0/(Speedc*C*sqrt(pow(A+B*exp(x*C),2)-L*L)))*(pow(A+B*exp(x*C),2)-L*L+(C*x-log(A*(A+B*exp(C*x))-L*L+sqrt(A*A-L*L)*sqrt(pow(A+B*exp(C*x),2)-L*L)))*(A*A*sqrt(pow(A+B*exp(x*C),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(A+B*exp(x*C),2)-L*L)*log(A+B*exp(x*C)+sqrt(pow(A+B*exp(x*C),2)-L*L)) );
+////Get the value of refractive index model for a given depth in ice
+double Getnz_ice(double z){
+  z=fabs(z);
+  return A_ice+GetB_ice(z)*exp(-GetC_ice(z)*z);
 }
+
+////Set the value of the asymptotic parameter of the air refractive index model
+const double A_air=1.00;
+
+////define dummy variables which will be filled in later after fitting
+double B_air=0;
+double C_air=0;
+
+////Get the value of the B parameter for the air refractive index model
+double GetB_air(double z){
+  double zabs=fabs(z);
+  double B=0;
+  
+  B=B_air;
+  return B;
+}
+
+////Get the value of the C parameter for the air refractive index model
+double GetC_air(double z){
+  double zabs=fabs(z);
+  double C=0;
+
+  C=C_air;
+  return C;
+}
+
+////Get the value of refractive index model for a given depth in air
+double Getnz_air(double z){
+  z=fabs(z);
+  return A_air+GetB_air(z)*exp(-GetC_air(z)*z);
+}
+
 
 ////Use GSL minimiser which uses Brent's Method to find root for a given function
 double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
@@ -206,7 +218,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
       r = gsl_root_fsolver_root (s);
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi,0, 0.001);
+      status = gsl_root_test_interval (x_lo, x_hi,0, 0.0001);
 
       if (status == GSL_SUCCESS){
 	//printf ("Converged:");
@@ -220,13 +232,73 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
   return r;
 }
 
+/////Functions used for Raytracing in Ice using the analytical solution
+
+////Analytical solution describing the ray path in ice
+struct fDnfR_params { double a, b, c, l; };
+double fDnfR(double x,void *params){
+  
+  struct fDnfR_params *p= (struct fDnfR_params *) params;
+  double A = p->a;
+  double B = p->b;
+  double C = p->c;
+  double L = p->l;
+  
+  return (L/C)*(1.0/sqrt(A*A-L*L))*(C*x-log(A*(A+B*exp(C*x))-L*L+sqrt(A*A-L*L)*sqrt(pow(A+B*exp(C*x),2)-L*L)));;
+}
+
+////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
+struct fdxdz_params { double lang, z0,z1; int airorice;};
+double fdxdz(double x,void *params){
+  
+  struct fdxdz_params *p= (struct fdxdz_params *) params;
+  double Lang = p->lang;
+  double Z0 = p->z0;
+  double Z1 = p->z1;
+  int AirOrIce = p->airorice;
+  
+   double output=0;
+  if(AirOrIce==0){
+    output=tan(asin( (Getnz_ice(Z0)*sin(x))/Getnz_ice(Z1) ) ) - tan(Lang);
+  }
+  
+  if(AirOrIce==1){
+    output=tan(asin( (Getnz_air(Z0)*sin(x))/Getnz_air(Z1) ) ) - tan(Lang);
+  }
+  return output;
+}
+
+////The function used to calculate ray propogation time in ice
+struct ftimeD_params { double a, b, c, speedc,l; int airorice; };
+double ftimeD(double x,void *params){
+  
+  struct ftimeD_params *p= (struct ftimeD_params *) params;
+  double A = p->a;
+  double B = p->b;
+  double C = p->c;
+  double Speedc = p->speedc;
+  double L = p->l;
+  int AirOrIce=p->airorice;
+
+  double result=0;
+  if(AirOrIce==0){//in ice
+    result=(1.0/(Speedc*C*sqrt(pow(Getnz_ice(x),2)-L*L)))*(pow(Getnz_ice(x),2)-L*L+(C*x-log(A*Getnz_ice(x)-L*L+sqrt(A*A-L*L)*sqrt(pow(Getnz_ice(x),2)-L*L)))*(A*A*sqrt(pow(Getnz_ice(x),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(Getnz_ice(x),2)-L*L)*log(Getnz_ice(x)+sqrt(pow(Getnz_ice(x),2)-L*L)) );
+  }
+  if(AirOrIce==1){//in air
+    result=(1.0/(Speedc*C*sqrt(pow(Getnz_air(x),2)-L*L)))*(pow(Getnz_air(x),2)-L*L+(C*x-log(A*Getnz_air(x)-L*L+sqrt(A*A-L*L)*sqrt(pow(Getnz_air(x),2)-L*L)))*(A*A*sqrt(pow(Getnz_air(x),2)-L*L))/sqrt(A*A-L*L) +A*sqrt(pow(Getnz_air(x),2)-L*L)*log(Getnz_air(x)+sqrt(pow(Getnz_air(x),2)-L*L)) );
+  }
+  
+  return result;
+  
+}
+
 ////Get the distance on the 2ndLayer at which the ray should hit given an incident angle such that it hits an target at depth of z0 m in the second layer.
 //// n_layer1 is the refractive index value of the previous layer at the boundary of the two mediums
 //// A,B and C values are the values required for n(z)=A+B*exp(Cz) for the second layer
 //// TxDepth is the starting height or depth
 //// RxDepth is the final height or depth
 //// AirOrIce variable is used to determine whether we are working in air or ice as that sets the range for the GSL root finder.
-double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
+double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
   double *output=new double[3];
   
   double x0=0;////Starting horizontal point of the ray. Always set at zero
@@ -240,26 +312,33 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   double SurfaceRayIncidentAngle=IncidentAng*(pi/180.0);////Angle at which the ray is incident on the second layer
   double RayAngleInside2ndLayer=0;////Use Snell's Law to find the angle of transmission in the 2ndlayer
 
-  double nzRx=A+B*exp(-C*RxDepth);
-  double nzTx=A+B*exp(-C*TxDepth);
+  double A=0;
+  double nzRx=0;
+  double nzTx=0;
   double GSLFnLimit=0;
-  double LimitAngle=0;
 
   if(AirOrIce==0){
     //cout<<"in ice"<<endl;
-    LimitAngle=asin(nzTx/nzRx);
+    A=A_ice;
+    nzRx=Getnz_ice(RxDepth);
+    nzTx=Getnz_ice(TxDepth);
   }
   if(AirOrIce==1){
     //cout<<"in air"<<endl;
-    LimitAngle=asin(nzTx/nzRx);
+    A=A_air;
+    nzRx=Getnz_air(RxDepth);
+    nzTx=Getnz_air(TxDepth);
   }
 
+  ////LimitAngle sets a limit on the range to which the GSL minimisation will work. This limit comes from the fact that in fdxdx() you have tan(asin(x)) which goes to infinity at x=1. In our case x=(nz(Z0)*sin(Angle))/nz(Z1) . Solving for Angle gives us our limit.
+  double LimitAngle=asin(nzTx/nzRx);
+  
   GSLFnLimit=LimitAngle;
   RayAngleInside2ndLayer=asin((n_layer1/nzTx)*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
   
   ////calculate the angle at which the target receives the ray
   gsl_function F1;
-  struct fdxdz_params params1 = {A, B, -C, RayAngleInside2ndLayer, RxDepth,TxDepth};
+  struct fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
   F1.function = &fdxdz;
   F1.params = &params1;
   ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit);
@@ -267,34 +346,57 @@ double *GetLayerHitPointPar(double n_layer1,double A, double B, double C, double
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
   Lvalue=nzRx*sin(ReceiveAngle);
-  struct fDnfR_params params2 = {A, B, -C, Lvalue};
-  x1=+fD(RxDepth,&params2)-fD(TxDepth,&params2);
+  struct fDnfR_params params2a;
+  struct fDnfR_params params2b;
+  if(AirOrIce==0){
+    //cout<<"in ice"<<endl;
+    params2a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), Lvalue};
+    params2b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), Lvalue};
+  }
+  if(AirOrIce==1){
+    //cout<<"in air"<<endl;
+    params2a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), Lvalue};
+    params2b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), Lvalue};
+  }
+  x1=+fDnfR(RxDepth,&params2a)-fDnfR(TxDepth,&params2b);
   if(AirOrIce==1){
     x1*=-1;
   }
-  //cout<<"The hit point horizontal distance is from the Rx target "<<x1<<" m  on the surface"<<endl; 
-
+  
+  //cout<<"The hit point horizontal distance is from the Rx target "<<x1<<" m  on the surface"<<endl;
+  
   ////calculate the propagation time in 2ndLayer
-  struct ftimeD_params params3 = {A, B, -C, spedc,Lvalue};
-  RayTimeIn2ndLayer=+ftimeD(RxDepth,&params3)-ftimeD(TxDepth,&params3);
+  struct ftimeD_params params3a;
+  struct ftimeD_params params3b;
+  if(AirOrIce==0){
+    //cout<<"in ice"<<endl;
+    params3a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), spedc, Lvalue,0};
+    params3b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), spedc, Lvalue,0};
+  }
+  if(AirOrIce==1){
+    //cout<<"in air"<<endl;
+    params3a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), spedc, Lvalue,1};
+    params3b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), spedc, Lvalue,1};
+  }
+  RayTimeIn2ndLayer=+ftimeD(RxDepth,&params3a)-ftimeD(TxDepth,&params3b);
   if(AirOrIce==1){
     RayTimeIn2ndLayer*=-1;
   }
   //cout<<"The propagation time in 2ndLayer is: "<<RayTimeIn2ndLayer<<" s"<<endl;
 
   ///////calculate the initial angle when the ray enters the 2ndLayer. This should be the same as RayAngleInside2ndLayer. This provides a good sanity check to make sure things have worked out.
-  gsl_function F4;
-  double result, abserr;
-  F4.function = &fD;
-  F4.params = &params2;
-  gsl_deriv_central (&F4, TxDepth, 1e-8, &result, &abserr);
-  AngleOfEntryIn2ndLayer=atan(result)*(180.0/pi);
-  if(TxDepth==RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
-    AngleOfEntryIn2ndLayer=180-ReceiveAngle;
-  }
-  if(TxDepth!=RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
-    AngleOfEntryIn2ndLayer=90;
-  }
+  // gsl_function F4;
+  // double result, abserr;
+  // F4.function = &fDnfR;
+  // F4.params = &params2b;
+  // gsl_deriv_central (&F4, TxDepth, 1e-8, &result, &abserr);
+  // AngleOfEntryIn2ndLayer=atan(result)*(180.0/pi);
+  // if(TxDepth==RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
+  //   AngleOfEntryIn2ndLayer=180-ReceiveAngle;
+  // }
+  // if(TxDepth!=RxDepth && TMath::IsNaN(AngleOfEntryIn2ndLayer)==true){
+  //   AngleOfEntryIn2ndLayer=90;
+  // }
   //cout<<"AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/pi)<<endl;
 
   output[0]=x1;
@@ -426,7 +528,6 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   double StartHeight=0;
   double StopHeight=0;
   double StartAngle=0;
-  double A=0,B=0,C=0;
   double TotalHorizontalDistance=0;
   vector <double> layerAs,layerBs,layerCs,layerLs;////vector for storing the A,B,C and L values of each of the atmosphere layers as the ray passes through them
 
@@ -442,10 +543,9 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   		    &c0, &c1, &cov00, &cov01, &cov11,
   		    &chisq);
     ////Store the results from the GSL fitter
-    ////A, B and C parameters for the refractive index profile
-    A=1.0;////This value is fixed at 1 as that is what the refractive index is for vacuum
-    B=exp(c0);
-    C=-c1;
+    ////B and C parameters for the air refractive index profile
+    B_air=exp(c0);
+    C_air=-c1;
     
     ////Set the starting height of the ray for propogation for that layer
     if(ilayer==MaxLayers-SkipLayersAbove-1){
@@ -478,15 +578,15 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     //// How much horizontal distance did the ray travel in the layer
     //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
     //// The value of the L parameter for that layer
-    double* GetHitPar=GetLayerHitPointPar(Start_nh, A, B, C, StopHeight, StartHeight, StartAngle, 1);
+    double* GetHitPar=GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
     TotalHorizontalDistance+=GetHitPar[0];
     StartAngle=GetHitPar[1];
 
     ////Store in the values of A,B,C and L for tha layer
     layerLs.push_back(GetHitPar[2]);
-    layerAs.push_back(A);
-    layerBs.push_back(B);
-    layerCs.push_back(C);
+    layerAs.push_back(A_air);
+    layerBs.push_back(B_air);
+    layerCs.push_back(C_air);
     
     // printf ("# best fit: Y = %g + %g X\n", c0, c1);
     // // printf ("# covariance matrix:\n");
@@ -505,10 +605,9 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   gsl_fit_linear (flatten(h_data).data(), 1, flatten(lognh_data).data() ,1, flatten(h_data).size() ,
                    &c0, &c1, &cov00, &cov01, &cov11,
                    &chisq);
-  ////A, B and C parameters for the refractive index profile
-  A=1.0;////This value is fixed at 1 as that is what the refractive index is for vacuum
-  B=exp(c0);
-  C=-c1;
+  ////B and C parameters for the air refractive index profile
+  B_air=exp(c0);
+  C_air=-c1;
   
   ////Set the starting height of the ray for propogation to be the height of the transmitter
   StartHeight=TxHeight;
@@ -524,7 +623,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   //// How much horizontal distance did the ray travel through the whole atmosphere
   //// The angle of reciept/incidence at the end 
   //// The value of the L parameter for whole atmosphere fit
-  double* GetHitPar=GetLayerHitPointPar(Start_nh, A, B, C, StopHeight, StartHeight, StartAngle, 1);
+  double* GetHitPar=GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
 
   ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
   double TotalHorizontalDistanceSLF=GetHitPar[0];
@@ -542,11 +641,6 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////Section for propogating the ray through the ice
   
-  ////A, B and C parameters for the refractive index profile of ice
-  A=A_ice;
-  B=B_ice;
-  C=C_ice;
-  
   ////Set the starting depth of the ray for propogation to at the ice surface
   double StartDepth=0.0;
   ////Since we have the starting height of the ice layer we can find out the refactive index of air at that height from data using spline interpolation
@@ -562,7 +656,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   //// How much horizontal distance did the ray travel through ice to hit the antenna
   //// The angle of reciept/incidence at the end at the antenna
   //// The value of the L parameter for whole atmosphere fit
-  GetHitPar=GetLayerHitPointPar(Start_nh, A, B, C, AntennaDepth,StartDepth, StartAngle, 0);
+  GetHitPar=GetLayerHitPointPar(Start_nh, AntennaDepth,StartDepth, StartAngle, 0);
 
   ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
   double TotalHorizontalDistanceinIce=GetHitPar[0];
@@ -627,7 +721,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     for(double i=LayerStartHeight;i>LayerStopHeight;i--){
 
       ////Calculate the x (distance) value of the ray for given y (height) value
-      Refracted_x=fD(-i,&params2)-fD(-TxHeight,&params2);
+      Refracted_x=fDnfR(-i,&params2)-fDnfR(-TxHeight,&params2);
 
       ////If the ray just started off in a new layer we need to offset the x values of the new layer so that the ray aligns with the previous layer.
       if(ipoints>0 && fabs(i-LayerStartHeight)<0.0001){
@@ -667,12 +761,18 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     LastRefracted_x=Refracted_x;
   }
   
-  ////Print out the ray path in ice too  
-  struct fDnfR_params params2 = {A_ice, B_ice, C_ice, LvalueIce};
+  ////Print out the ray path in ice too
+  struct fDnfR_params params3a;
+  struct fDnfR_params params3b;
+  
   for(int i=0;i>-(AntennaDepth+1);i--){
-    grAirIce->SetPoint(ipoints,TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2),(double)i+IceLayerHeight);
-    grIceLayer->SetPoint(ipoints,TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2),IceLayerHeight);
-    aout<<ipoints<<" "<<TotalHorizontalDistance-fD((double)i,&params2)+fD(0,&params2)<<" "<<(double)i+IceLayerHeight<<endl;
+    params3a = {A_ice, GetB_ice(i), GetC_ice(i), LvalueIce};
+    params3b = {A_ice, GetB_ice(0), GetC_ice(0), LvalueIce};
+    
+    double refractedpath=TotalHorizontalDistance-fDnfR((double)i,&params3a)+fDnfR(0,&params3b);
+    grAirIce->SetPoint(ipoints,refractedpath,(double)i+IceLayerHeight);
+    grIceLayer->SetPoint(ipoints,refractedpath,IceLayerHeight);
+    aout<<ipoints<<" "<<refractedpath<<" "<<(double)i+IceLayerHeight<<endl;
     ipoints++;
   }
 
