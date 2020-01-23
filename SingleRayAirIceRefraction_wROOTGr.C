@@ -1,17 +1,22 @@
 #include "TGraph.h"
 #include "TMultiGraph.h"
 #include "TCanvas.h"
+
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <stdio.h>
+#include <vector>
+#include <cstdlib>
+
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_deriv.h>
 #include <gsl/gsl_fit.h>
 #include <gsl/gsl_spline.h>
+
 #include <sys/time.h>
 
 const double pi=4.0*atan(1.0); /**< Gives back value of Pi */
@@ -25,6 +30,17 @@ vector <vector <double>> h_data;////height data
 ////Define Arrays for storing values of ATMLAY and a,b and c parameters taken from the Atmosphere.dat file
 double ATMLAY[5];
 double abc[5][3];
+
+////define dummy variables which will be filled in later after fitting
+double C_air[5];
+double B_air[5];
+
+////define variables which are going to be used by GSL for linear interpolation
+gsl_interp_accel * accelerator;
+gsl_spline *spline;
+
+////The variable which will store the max layers available in an atmosphere model
+int MaxLayers=0;
 
 ////This Function reads in the values of ATMLAY and a,b and c parameters taken from the Atmosphere.dat file. The a,b and c values are mass overburden values and are not required in this code.
 int readATMpar(){
@@ -91,7 +107,7 @@ int readnhFromFile(){
     while (getline(ain,line)){
       ain>>dummy1>>dummy2;
       
-      if(dummy1>=0){////start storing height at above and equal to 0 m
+      if(dummy1>-1){////start storing height at above and equal to 0 m
 	////push in the height values for a single layer in the temporary vector
 	temp1.push_back(dummy1);
 	temp2.push_back(dummy2);
@@ -131,6 +147,8 @@ int readnhFromFile(){
   h_data[h_data.size()-1].erase(h_data[h_data.size()-1].end() - 1);
   nh_data[nh_data.size()-1].erase(nh_data[nh_data.size()-1].end() - 1);
   lognh_data[lognh_data.size()-1].erase(lognh_data[lognh_data.size()-1].end() - 1);
+
+  MaxLayers=h_data.size();////store the total number of layers present in the data
   
   return 0;
 }
@@ -165,16 +183,43 @@ double Getnz_ice(double z){
 ////Set the value of the asymptotic parameter of the air refractive index model
 const double A_air=1.00;
 
-////define dummy variables which will be filled in later after fitting
-double B_air=0;
-double C_air=0;
+
+int FillInAirRefractiveIndex(){
+  
+  double N0=0;
+  for(int ilayer=0;ilayer<MaxLayers;ilayer++){
+    double hlow=ATMLAY[ilayer]/100;
+    C_air[ilayer]=1.0/(abc[ilayer][2]/100);
+    if(ilayer>0){
+      N0=A_air+B_air[ilayer-1]*exp(-hlow*C_air[ilayer-1]);
+    }
+    if(ilayer==0){
+      N0=gsl_spline_eval(spline, 0, accelerator);
+    }
+    B_air[ilayer]=((N0-1)/exp(-hlow*C_air[ilayer]));
+  }
+
+  return 0;   
+}
 
 ////Get the value of the B parameter for the air refractive index model
 double GetB_air(double z){
   double zabs=fabs(z);
   double B=0;
-  
-  B=B_air;
+  int whichlayer=0;
+ 
+  for(int ilayer=0;ilayer<MaxLayers-1;ilayer++){
+
+    if(zabs<ATMLAY[ilayer+1]/100 && zabs>=ATMLAY[ilayer]/100){
+      whichlayer=ilayer;
+      ilayer=100;
+    }  
+  }
+  if(zabs>=ATMLAY[MaxLayers-1]/100){
+    whichlayer=MaxLayers-1;
+  }
+ 
+  B=B_air[whichlayer];
   return B;
 }
 
@@ -182,8 +227,19 @@ double GetB_air(double z){
 double GetC_air(double z){
   double zabs=fabs(z);
   double C=0;
-
-  C=C_air;
+  int whichlayer=0;
+  
+  for(int ilayer=0;ilayer<MaxLayers-1;ilayer++){
+    if(zabs<ATMLAY[ilayer+1]/100 && zabs>=ATMLAY[ilayer]/100){
+      whichlayer=ilayer;
+      ilayer=100;
+    }
+  }
+  
+  if(zabs>=ATMLAY[MaxLayers-1]/100){
+    whichlayer=MaxLayers-1;
+  }
+  C=C_air[whichlayer];
   return C;
 }
 
@@ -193,17 +249,14 @@ double Getnz_air(double z){
   return A_air+GetB_air(z)*exp(-GetC_air(z)*z);
 }
 
-
 ////Use GSL minimiser which uses Brent's Method to find root for a given function
-double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
+double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T)
 {
   int status;
   int iter = 0, max_iter = 100;
-  const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
-
-  T = gsl_root_fsolver_brent;
+  
   s = gsl_root_fsolver_alloc (T);
   gsl_set_error_handler_off();
   gsl_root_fsolver_set (s, &F, x_lo, x_hi);
@@ -218,7 +271,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
       r = gsl_root_fsolver_root (s);
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi,0, 0.0001);
+      status = gsl_root_test_interval (x_lo, x_hi,0, 0.000001);
 
       if (status == GSL_SUCCESS){
 	//printf ("Converged:");
@@ -289,7 +342,6 @@ double ftimeD(double x,void *params){
   }
   
   return result;
-  
 }
 
 ////Get the distance on the 2ndLayer at which the ray should hit given an incident angle such that it hits an target at depth of z0 m in the second layer.
@@ -299,7 +351,7 @@ double ftimeD(double x,void *params){
 //// RxDepth is the final height or depth
 //// AirOrIce variable is used to determine whether we are working in air or ice as that sets the range for the GSL root finder.
 double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
-  double *output=new double[3];
+  double *output=new double[4];
   
   double x0=0;////Starting horizontal point of the ray. Always set at zero
   double x1=0;////Variable to store the horizontal distance that will be traveled by the ray
@@ -341,7 +393,7 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   struct fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
   F1.function = &fdxdz;
   F1.params = &params1;
-  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit);
+  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit,gsl_root_fsolver_bisection);
   //cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/pi)<<" deg"<<endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
@@ -362,8 +414,6 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   if(AirOrIce==1){
     x1*=-1;
   }
-  
-  //cout<<"The hit point horizontal distance is from the Rx target "<<x1<<" m  on the surface"<<endl;
   
   ////calculate the propagation time in 2ndLayer
   struct ftimeD_params params3a;
@@ -402,6 +452,7 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   output[0]=x1;
   output[1]=ReceiveAngle*(180/pi);
   output[2]=Lvalue;
+  output[3]=RayTimeIn2ndLayer;
   
   return output;
 }
@@ -426,7 +477,29 @@ static timestamp_t get_timestamp (){
   return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
 }
 
-void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngle, double TxHeight, double IceLayerHeight){
+int MakeAtmosphere(){
+   
+  ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
+  readATMpar();
+  readnhFromFile();
+  
+  ////Flatten out the height and the refractive index vectors to be used for setting the up the spline interpolation.
+  vector <double> flattened_h_data=flatten(h_data);
+  vector <double> flattened_nh_data=flatten(nh_data);
+  
+  ////Set up the GSL cubic spline interpolation. This used for interpolating values of refractive index at different heights.
+  accelerator =  gsl_interp_accel_alloc();
+  spline = gsl_spline_alloc (gsl_interp_cspline,flattened_h_data.size());
+  gsl_spline_init(spline, flattened_h_data.data(), flattened_nh_data.data(), flattened_h_data.size());
+  
+  FillInAirRefractiveIndex();
+  // delete accelerator;
+  // delete spline;
+
+  return 0;
+}
+
+void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngle, double AirTxHeight, double IceLayerHeight){
   //void SingleRayAirIceRefraction_wROOTGr(){
 
   ////For recording how much time the process took
@@ -434,18 +507,16 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   
   // double AntennaDepth=200;////Depth of antenna in the ice
   // double RayLaunchAngle=124.765;////Initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
-  // double TxHeight=5000;////Height of the source
+  // double AirTxHeight=5000;////Height of the source
   // double IceLayerHeight=3000;////Height where the ice layer starts off
 
   ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
-  readATMpar();
-  readnhFromFile();
-  int MaxLayers=h_data.size();////store the total number of layers present in the data
+  MakeAtmosphere();
   
-  if(TxHeight>h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]){
+  if(AirTxHeight>h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]){
     ////Maximum height available with the refractive index data
     cout<<"Tx Height is set higher than maximum available height for atmospheric refractive index which is "<<h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]<<endl;
-    TxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];
+    AirTxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];
     cout<<"Setting Tx Height to be the maximum available height"<<endl;
   }
 
@@ -458,38 +529,6 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   ////Print out the ray path x and y values in a file
   ofstream aout("RayPathinAirnIce.txt");
   
-  
-  ////Flatten out the height and the refractive index vectors to be used for setting the up the spline interpolation.
-  vector <double> flattened_h_data=flatten(h_data);
-  vector <double> flattened_nh_data=flatten(nh_data);
-
-  ////Set up the GSL cubic spline interpolation. This is used for interpolating values of refractive index at different heights.
-  gsl_interp_accel * accelerator =  gsl_interp_accel_alloc();
-  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline,flattened_h_data.size());
-  gsl_spline_init(spline, flattened_h_data.data(), flattened_nh_data.data(), flattened_h_data.size());
-
-  ////Plot and Fit each of the three layers to the function n(h)-1=ln(B)+C*h
-  TCanvas *cc=new TCanvas("cc","cc");
-  cc->cd();
-  TGraph * gr=new TGraph();
-  int isample=0;
-  for(int i=0;i<h_data.size();i++){
-    for(int j=0;j<h_data[i].size();j++){
-      gr->SetPoint(isample,h_data[i][j],log(nh_data[i][j]-1));
-      isample++;
-    }
-  }
-  gr->SetTitle("Refractive index profile of the atmosphere; Height (m); ln(n(h)-1)");
-  gr->Draw("ALP");
-
-  TF1 *nz=new TF1("nz","[0]+[1]*x",0,50000);
-  nz->SetParameters(-7.1,-0.0001);
-  ////Now fit the layers witht the predefined function
-  for(int i=0;i<h_data.size();i++){
-    ////Start from Lowest Layer in altitude-Layer 1
-    //gr->Fit(nz,"","",ATMLAY[i]/100,ATMLAY[i+1]/100);
-  }
-  
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////Section for propogating the ray through the atmosphere
   
@@ -497,8 +536,8 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   int skiplayer=0;
   for(int ilayer=MaxLayers;ilayer>-1;ilayer--){
     //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer-1]/100<<endl;
-    if(TxHeight<ATMLAY[ilayer]/100 && TxHeight>ATMLAY[ilayer-1]/100){
-      cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<TxHeight<<" m"<<endl;
+    if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>=ATMLAY[ilayer-1]/100){
+      cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
       ilayer=-100;
     }
     if(ilayer>-1){
@@ -512,7 +551,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   skiplayer=0;
   for(int ilayer=0;ilayer<MaxLayers;ilayer++){
     //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer+1]/100<<endl;
-    if(IceLayerHeight>ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
+    if(IceLayerHeight>=ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
       cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
       ilayer=100;
     }
@@ -529,31 +568,19 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   double StopHeight=0;
   double StartAngle=0;
   double TotalHorizontalDistance=0;
-  vector <double> layerAs,layerBs,layerCs,layerLs;////vector for storing the A,B,C and L values of each of the atmosphere layers as the ray passes through them
-
-  double c0, c1;////variables to store the fit results from the GSL linear fitter for y=c0+c1*x. Here we are trying to fit the function: log(n(h)-1)=log(B)+C*h which basically comes from n(h)=A+B*exp(C*h)
-  double cov00, cov01, cov11, chisq;////variables to store the covariance matrix elements outputted the GSL linear fitting function
-
+  vector <double> layerLs;////vector for storing the A,B,C and L values of each of the atmosphere layers as the ray passes through them
+  
   ////Start loop over the atmosphere layers and analyticaly propagate the ray through the atmosphere
   cout<<"Fitting the atmosphere refrative index profile with multiple layers and propogate the ray"<<endl;
   for(int ilayer=MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
-
-    ////Run the GSL fitter to get the refractive index profile for the layer
-    gsl_fit_linear (h_data[ilayer].data(), 1, lognh_data[ilayer].data() ,1, h_data[ilayer].size(),
-  		    &c0, &c1, &cov00, &cov01, &cov11,
-  		    &chisq);
-    ////Store the results from the GSL fitter
-    ////B and C parameters for the air refractive index profile
-    B_air=exp(c0);
-    C_air=-c1;
     
     ////Set the starting height of the ray for propogation for that layer
     if(ilayer==MaxLayers-SkipLayersAbove-1){
       ////If this is the first layer then set the start height to be the height of the source
-      StartHeight=TxHeight;
+      StartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the layer
-      StartHeight=ATMLAY[ilayer+1]/100;
+      StartHeight=ATMLAY[ilayer+1]/100-0.00001;
     }
 
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -584,58 +611,13 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
 
     ////Store in the values of A,B,C and L for tha layer
     layerLs.push_back(GetHitPar[2]);
-    layerAs.push_back(A_air);
-    layerBs.push_back(B_air);
-    layerCs.push_back(C_air);
     
-    // printf ("# best fit: Y = %g + %g X\n", c0, c1);
-    // // printf ("# covariance matrix:\n");
-    // // printf ("# [ %g, %g\n#   %g, %g]\n",cov00, cov01, cov01, cov11);
-    // printf ("# chisq = %g\n", chisq);
-
     ////dont forget to delete the pointer!
     delete []GetHitPar;
   }
 
   double IncidentAngleonIce=StartAngle;
   cout<<"Total horizontal distance travelled by the ray using Multiple Layer fitting is "<<TotalHorizontalDistance<<endl;
-  cout<<"Now treating the atmosphere refrative index profile as a single layer and fitting it and propogating the ray"<<endl;
-
-  ////Run the GSL fitter to get the refractive index profile for the whole atmosphere
-  gsl_fit_linear (flatten(h_data).data(), 1, flatten(lognh_data).data() ,1, flatten(h_data).size() ,
-                   &c0, &c1, &cov00, &cov01, &cov11,
-                   &chisq);
-  ////B and C parameters for the air refractive index profile
-  B_air=exp(c0);
-  C_air=-c1;
-  
-  ////Set the starting height of the ray for propogation to be the height of the transmitter
-  StartHeight=TxHeight;
-  ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-  Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
-  ////Set the stopping height of the ray for propogation to be the height of the ice layer
-  StopHeight=IceLayerHeight;
-  ////Set the initial launch angle of the ray
-  StartAngle=180-RayLaunchAngle;
-  //cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<endl;
-  
-  ////Get the hit parameters from the function. The output is:
-  //// How much horizontal distance did the ray travel through the whole atmosphere
-  //// The angle of reciept/incidence at the end 
-  //// The value of the L parameter for whole atmosphere fit
-  double* GetHitPar=GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
-
-  ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
-  double TotalHorizontalDistanceSLF=GetHitPar[0];
-  double StartAngleSLF=GetHitPar[1];
-  double LvalueSLF=GetHitPar[2];
-
-  //printf ("# best fit: Y = %g + %g X\n", c0, c1);
-  ////printf ("# covariance matrix:\n");
-  ////printf ("# [ %g, %g\n#   %g, %g]\n",cov00, cov01, cov01, cov11);
-  //printf ("# chisq = %g\n", chisq);
-  
-  cout<<"Total horizontal distance travelled by the ray using Single Layer fitting is  "<<TotalHorizontalDistanceSLF<<endl;
   cout<<"Now propagating the ray through the ice towards the antenna"<<endl;
   
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -656,7 +638,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   //// How much horizontal distance did the ray travel through ice to hit the antenna
   //// The angle of reciept/incidence at the end at the antenna
   //// The value of the L parameter for whole atmosphere fit
-  GetHitPar=GetLayerHitPointPar(Start_nh, AntennaDepth,StartDepth, StartAngle, 0);
+  double *GetHitPar=GetLayerHitPointPar(Start_nh, AntennaDepth,StartDepth, StartAngle, 0);
 
   ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
   double TotalHorizontalDistanceinIce=GetHitPar[0];
@@ -681,7 +663,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
 
   ////Make a straight line at the same launch angle as the refracted ray in air to calculate the residual
   double StraightLine_slope=tan(pi/2-RayLaunchAngle*(pi/180));
-  double StraightLine_y_intercept=TxHeight;
+  double StraightLine_y_intercept=AirTxHeight;
   //cout<<"StraightLine slope "<<StraightLine_slope<<" ,StraightLine_y_intercept "<<StraightLine_y_intercept<<endl;
   
   ////Define ray variables for plotting and/or storing ray path as it comes down from the atmosphere
@@ -693,20 +675,21 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   double LayerStopHeight=0;////The stopping height for the propagation in the layer
   int ipoints=0;////variable for counting the total number of samples that make up the ray path
 
+  ////Get and Set the A,B,C and L parameters for the layer
+  struct fDnfR_params params2a;
+  struct fDnfR_params params2b;
+  
   ////Start looping over the layers to trace out the ray
   for(int il=0;il<MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
     
-    ////Get and Set the A,B,C and L parameters for the layer
-    struct fDnfR_params params2 = {layerAs[il], layerBs[il], layerCs[il], layerLs[il]};
-
-    if(il==0){      
+    if(il==0){
       ////If this is the first layer then set the start height to be the height of the source
-      LayerStartHeight=TxHeight;
+      LayerStartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-      LayerStartHeight=LastHeight;
+      LayerStartHeight=LastHeight-0.00001;
     }
-
+    
     if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
       ////If this is the last layer then set the stopping height to be the height of the ice layer
       LayerStopHeight=IceLayerHeight-1;
@@ -715,44 +698,48 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
       LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
     }
     
-    //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
-
+    //std::cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<std::endl;
+    //std::cout<<" new layer "<<std::endl;
     ////Start tracing out the ray as it propagates through the layer
-    for(double i=LayerStartHeight;i>LayerStopHeight;i--){
-
+    for(double i=LayerStartHeight-1;i>LayerStopHeight+1;i--){
+      
+      ////Get and Set the A,B,C and L parameters for the layer
+      params2a = {A_air, GetB_air(-i), GetC_air(-i), layerLs[il]};
+      params2b = {A_air, GetB_air(-(i)), GetC_air(-(i)), layerLs[il]};
+      
       ////Calculate the x (distance) value of the ray for given y (height) value
-      Refracted_x=fDnfR(-i,&params2)-fDnfR(-TxHeight,&params2);
-
-      ////If the ray just started off in a new layer we need to offset the x values of the new layer so that the ray aligns with the previous layer.
-      if(ipoints>0 && fabs(i-LayerStartHeight)<0.0001){
-  	LayerHoriOffset=(Refracted_x-LastRefracted_x);
-  	//cout<<il<<" layer offset is "<<LayerHoriOffset<<endl;
-      }
-      Refracted_x=Refracted_x-LayerHoriOffset;
+      Refracted_x=fDnfR(-i,&params2a)-fDnfR(-(LayerStartHeight),&params2b)+LastRefracted_x;
+      
+      ////If the ray just started off in a new layer we might need to offset the x values of the new layer so that the ray aligns with the previous layer.
+      // if(ipoints>0 && fabs(i-LayerStartHeight-1)<2){
+      //   LayerHoriOffset=(Refracted_x-LastRefracted_x);
+      //   std::cout<<il<<" layer offset is "<<LayerHoriOffset<<std::endl;
+      // }
+      // Refracted_x=Refracted_x-LayerHoriOffset;
 
       ////Caclulate the y value of the straight line
-      double StraightLine_y=StraightLine_slope*Refracted_x+StraightLine_y_intercept;
-
+      double StraightLine_y=StraightLine_slope*Refracted_x+StraightLine_y_intercept;      
+      
       grAirIce->SetPoint(ipoints,Refracted_x,i);
       grRefracted->SetPoint(ipoints,Refracted_x,i);
       grStraight->SetPoint(ipoints,Refracted_x,StraightLine_y);
       grIceLayer->SetPoint(ipoints,Refracted_x,IceLayerHeight);
-      
+
       ////To make sure that the residual in air is only caculated above the ice surface
       if(StraightLine_y>=IceLayerHeight){
   	grResidual->SetPoint(ipoints,Refracted_x,i-StraightLine_y);
       }
+      
+      //std::cout<<ipoints<<" "<<Refracted_x<<" "<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<i-StraightLine_y<<std::endl;
+      aout<<ipoints<<" "<<Refracted_x<<" "<<i<<std::endl;
 
-      //cout<<ipoints<<" "<<Refracted_x<<" "<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<i-StraightLine_y<<endl;
-      aout<<ipoints<<" "<<Refracted_x<<" "<<i<<endl;
-
-      ////If you want to check the the transition between different layers uncomment these lines
+      // ////If you want to check the the transition between different layers uncomment these lines
       // if(fabs(i-LayerStopHeight)<10){
-      // 	cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
+      //   std::cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<" "<<GetB_air(-i)<<" "<<GetC_air(-i)<<" "<<layerLs[il]<<" "<<fDnfR(-i,&params2a)<<" "<<-fDnfR(-(LayerStartHeight),&params2b)<<" "<<LayerStartHeight<<" "<<LastRefracted_x<<" "<<GetB_air(-LayerStartHeight)<<" "<<GetC_air(-LayerStartHeight)<<std::endl;
       // }
       
       // if(fabs(i-LayerStartHeight)<10){
-      // 	cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<endl;;
+      //   std::cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<" "<<GetB_air(-i)<<" "<<GetC_air(-i)<<" "<<layerLs[il]<<" "<<fDnfR(-i,&params2a)<<" "<<-fDnfR(-(LayerStartHeight),&params2b)<<" "<<LayerStartHeight<<" "<<LastRefracted_x<<" "<<GetB_air(-LayerStartHeight)<<" "<<GetC_air(-LayerStartHeight)<<std::endl;
       // }
       
       ipoints++;
@@ -769,7 +756,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     params3a = {A_ice, GetB_ice(i), GetC_ice(i), LvalueIce};
     params3b = {A_ice, GetB_ice(0), GetC_ice(0), LvalueIce};
     
-    double refractedpath=TotalHorizontalDistance-fDnfR((double)i,&params3a)+fDnfR(0,&params3b);
+    double refractedpath=LastRefracted_x-fDnfR((double)i,&params3a)+fDnfR(0,&params3b);
     grAirIce->SetPoint(ipoints,refractedpath,(double)i+IceLayerHeight);
     grIceLayer->SetPoint(ipoints,refractedpath,IceLayerHeight);
     aout<<ipoints<<" "<<refractedpath<<" "<<(double)i+IceLayerHeight<<endl;
@@ -812,10 +799,10 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   cb->cd();
   mgB->Draw("ALP");
 
-  delete accelerator;
-  delete spline;
-  flattened_h_data.clear();
-  flattened_nh_data.clear();
+  // delete accelerator;
+  // delete spline;
+  // flattened_h_data.clear();
+  // flattened_nh_data.clear();
 
   timestamp_t t1 = get_timestamp();
   
