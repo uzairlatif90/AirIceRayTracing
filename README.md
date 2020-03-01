@@ -7,7 +7,7 @@ C++ code which uses analytic ray tracing for tracing rays from any point in the 
 
   2) is to use raytracing function directly that contains the minimisation
 
-RunMultiRayCode.C: This script take in as arguments the antenna depth, the height of the ice layer, Air Tx Height and Horizontal Distance btw Air Tx and Antenna Rx in ice. Then you can use 1) or 2) to find a possible solution (ray path) between the given two points. You can just run it by ROOT by doing: 'root -l RunMultiRayCode.C'
+- RunMultiRayCode.C: This script take in as arguments the antenna depth, the height of the ice layer, Air Tx Height and Horizontal Distance btw Air Tx and Antenna Rx in ice. Then you can use 1) or 2) to find a possible solution (ray path) between the given two points. You can just run it by ROOT by doing: 'root -l RunMultiRayCode.C'
 
 - SingleRayAirIceRefraction.C : This script takes in as arguments the antenna depth, ice layer height, initial launch angle of the ray and height of the Tx. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere and ice.
 
