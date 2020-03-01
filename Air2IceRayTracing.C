@@ -245,22 +245,49 @@ double Getnz_air(double z){
   return A_air+GetB_air(zabs)*exp(-GetC_air(zabs)*zabs);
 }
 
-////Use GSL minimiser which uses Brent's Method to find root for a given function. This will be used to find roots wherever it is needed in my code.
-double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T)
+////E-feild Power Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+double Refl_S(double thetai, double IceLayerHeight){
+  double Nair=Getnz_air(IceLayerHeight);
+  double Nice=Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+  
+  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double num=n1*cos(thetai)-n2*sqterm;
+  double den=n1*cos(thetai)+n2*sqterm;
+  double RS=(num*num)/(den*den);
+  return (RS);
+}
+
+////E-feild Power Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+double Refl_P(double thetai, double IceLayerHeight){
+  double Nair=Getnz_air(IceLayerHeight);
+  double Nice=Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+  
+  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double num=n1*sqterm-n2*cos(thetai);
+  double den=n1*sqterm+n2*cos(thetai);
+  double RP=(num*num)/(den*den);
+  return (RP);
+}
+
+////Use GSL minimiser which uses Brent's Method to find root for a given function
+double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance)
 {
   int status;
   int iter = 0, max_iter = 100;
-  
+  //const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
-
+  //double tolerance=0.000000001;
+  
   s = gsl_root_fsolver_alloc (T);
   gsl_set_error_handler_off();
-  status = gsl_root_fsolver_set (s, &F, x_lo, x_hi);
-  //std::cout<<x_lo<<" "<<x_hi<<" "<<std::endl;
-  //printf ("error: %s\n", gsl_strerror (status));  
-  // printf ("using %s method\n", gsl_root_fsolver_name (s));
-  // printf ("%5s [%9s, %9s] %9s %9s\n","iter", "lower", "upper", "root", "err(est)");
+  gsl_root_fsolver_set (s, &F, x_lo, x_hi);
+  //printf ("using %s method\n", gsl_root_fsolver_name (s));
+  //printf ("%5s [%9s, %9s] %9s %9s\n","iter", "lower", "upper", "root", "err(est)");
 
   do
     {
@@ -269,12 +296,12 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_f
       r = gsl_root_fsolver_root (s);
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi,0, 0.000001);      
-      //printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
-      //if (status == GSL_SUCCESS){
-	// printf ("Converged:");
-	// printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
-      //}
+      status = gsl_root_test_interval (x_lo, x_hi,0, tolerance);
+
+      if (status == GSL_SUCCESS){
+	//printf ("Converged:");
+	//printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
+      }
     }
   while (status == GSL_CONTINUE && iter < max_iter);
 
@@ -282,7 +309,6 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_f
 
   return r;
 }
-
 
 ////Analytical solution describing the ray path in ice
 struct fDnfR_params { double a, b, c, l; };
@@ -390,7 +416,7 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   struct fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
   F1.function = &fdxdz;
   F1.params = &params1;
-  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit,gsl_root_fsolver_bisection);
+  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit,gsl_root_fsolver_falsepos,0.000000001);
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
   Lvalue=nzRx*sin(ReceiveAngle);
@@ -724,7 +750,7 @@ int main(int argc, char **argv){
   std::cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<std::endl;
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
-  double LaunchAngleAir=FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent);
+  double LaunchAngleAir=FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
   std::cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleAir<<" deg"<<std::endl;
   
   double * GetResultsAir=GetAirPropagationPar(LaunchAngleAir,AirTxHeight,IceLayerHeight);

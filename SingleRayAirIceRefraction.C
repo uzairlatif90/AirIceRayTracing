@@ -245,18 +245,47 @@ double Getnz_air(double z){
   return A_air+GetB_air(z)*exp(-GetC_air(z)*z);
 }
 
+////E-feild Power Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+double Refl_S(double thetai, double IceLayerHeight){
+  double Nair=Getnz_air(IceLayerHeight);
+  double Nice=Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+  
+  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double num=n1*cos(thetai)-n2*sqterm;
+  double den=n1*cos(thetai)+n2*sqterm;
+  double RS=(num*num)/(den*den);
+  return (RS);
+}
+
+////E-feild Power Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+double Refl_P(double thetai, double IceLayerHeight){
+  double Nair=Getnz_air(IceLayerHeight);
+  double Nice=Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+  
+  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double num=n1*sqterm-n2*cos(thetai);
+  double den=n1*sqterm+n2*cos(thetai);
+  double RP=(num*num)/(den*den);
+  return (RP);
+}
+
 ////Use GSL minimiser which uses Brent's Method to find root for a given function
-double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T)
+double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance)
 {
   int status;
   int iter = 0, max_iter = 100;
+  //const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
+  //double tolerance=0.000000001;
   
   s = gsl_root_fsolver_alloc (T);
   gsl_set_error_handler_off();
   gsl_root_fsolver_set (s, &F, x_lo, x_hi);
-
   //printf ("using %s method\n", gsl_root_fsolver_name (s));
   //printf ("%5s [%9s, %9s] %9s %9s\n","iter", "lower", "upper", "root", "err(est)");
 
@@ -267,7 +296,7 @@ double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_f
       r = gsl_root_fsolver_root (s);
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi,0, 0.000001);
+      status = gsl_root_test_interval (x_lo, x_hi,0, tolerance);
 
       if (status == GSL_SUCCESS){
 	//printf ("Converged:");
@@ -389,7 +418,7 @@ double *GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, doub
   struct fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
   F1.function = &fdxdz;
   F1.params = &params1;
-  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit,gsl_root_fsolver_bisection);
+  ReceiveAngle=FindFunctionRoot(F1,0*(pi/180),GSLFnLimit,gsl_root_fsolver_falsepos,0.000000001);
   //std::cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/pi)<<" deg"<<std::endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution

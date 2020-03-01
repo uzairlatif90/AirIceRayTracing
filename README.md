@@ -1,13 +1,13 @@
 # AnalyticRayTracing from Air to Ice
 C++ code which uses analytic ray tracing for tracing rays from any point in the air to any point in the ice
 
-- MultiRayAirIceRefraction.C : This script takes in as arguments the antenna depth and the height of the ice layer. Then it loops over values of Tx Height and the ray launch angle and prints a file called "TableValues.txt" which contains the following columns:
+- MultiRayAirIceRefraction.cc , MultiRayAirIceRefraction.h: These two files contain functions for a namespace "MultiRayAirIceRefraction" that I made for CoREAS. The functions use the raytracing algorithms to trace rays from any point above ice surface in air to any point below the ice surface. There are two ways to do that:
+  1) is to use a function that generates a table first and then interpolates values through raytracing. To make the tables the step size for Tx height loop is set at 20 m and it starts at the maximum available height from the refractive index data to a step above the ice surface. And the step size for the ray launch angle loop goes from 92 deg to 180 deg in steps of 0.5 deg. Here 0 deg is vertically upwards. The table is stored c++ vectors and contains:
+     - the entry number, the Tx height, total horizontal distance traveled,total horizontal distance traveled on the surface above ice, total horizontal distance traveled in ice, total propogation time, total propagation time in air, total propagation time in ice, the initial ray launch angle at Tx, incident angle on ice, received angle in ice at the antenna inside this file, Reflection Coefficeint S, Reflection Coefficient P
 
-  - the entry number, the Tx height, ice layer height, Tx height above the ice layer height, total horizontal distance traveled on the surface above ice, total horizontal distance traveled in ice, the initial ray launch angle at Tx, incident angle on ice and received angle in ice at the antenna inside this file
+  2) is to use raytracing function directly that contains the minimisation
 
-  - The step size for Tx height loop is set at 20 m and it starts at the maximum available height from the refractive index data to a step above the ice surface.
-
-  - The step size for the ray launch angle loop goes from 91 deg to 179 deg in steps of 1 deg. Here 0 deg is vertically upwards
+RunMultiRayCode.C: This script take in as arguments the antenna depth, the height of the ice layer, Air Tx Height and Horizontal Distance btw Air Tx and Antenna Rx in ice. Then you can use 1) or 2) to find a possible solution (ray path) between the given two points. You can just run it by ROOT by doing: 'root -l RunMultiRayCode.C'
 
 - SingleRayAirIceRefraction.C : This script takes in as arguments the antenna depth, ice layer height, initial launch angle of the ray and height of the Tx. It traces the ray for this particular configuration and then prints out the total horizontal distance that was travelled by the ray above the ice and inside the ice. It also makes a text file called "RayPathinAirnIce.txt" which contains the x (distance), y (height) values (in m) of the ray path as it traverses through the atmosphere and ice.
 
