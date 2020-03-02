@@ -71,7 +71,7 @@ To run you just have to do:
 ### AirRayTracing.C as standalone package
 To run you just have to do:
 - Make it: `make AirRayTracing`
-- Run it: `./Air2IceRayTracing 5000 3100 1000 3000`
+- Run it: `./AirRayTracing 5000 3100 1000 3000`
 - In this case the example arguments are: Here 5000 m is Tx Height in air in m, 3100 m is Rx Height in air, 1000 m is the horizontal distance btw Tx in air and Rx in air in m and 3000 m is Ice Layer Height
 - The main is at the bottom of the code, which you can modify to your liking.
 
