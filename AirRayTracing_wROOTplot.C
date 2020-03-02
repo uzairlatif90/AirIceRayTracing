@@ -121,7 +121,7 @@ double* AirRayTracing_wROOTplot(double AirTxHeight, double AirRxHeight, double H
 
   if(PlotRayPath==true){
     ////Print out the ray path x and y values in a file
-    ofstream aout("RayPathinAirnIce.txt");
+    ofstream aout("RayPathinAir.txt");
 
     ////Find out how many atmosphere layers are above the source or Tx which we do not need
     int skiplayer=0;
