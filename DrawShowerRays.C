@@ -1,18 +1,10 @@
 #include "RayTracingFunctions.cc"
 
-void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, double IceLayerHeight, double AntennaDepth){
-
-  RayTracingFunctions::MakeAtmosphere();
+int Air2IceRayTracing_gr(double AirTxHeight, double HorizontalDistance, double IceLayerHeight, double AntennaDepth, TGraph *grAirIce, Double_t displacement){
   
   ////For recording how much time the process took
   timestamp_t t0 = get_timestamp();
-
-  //cout<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<endl;
   
-  // double AirTxHeight=5000;////Height of the source
-  // double HorizontalDistance=1000;////Horizontal distance
-  // double IceLayerHeight=3000;////Height where the ice layer starts off
-  // double AntennaDepth=200;////Depth of antenna in the ice  
   bool PlotRayPath=true;
   
   if(AirTxHeight<IceLayerHeight){
@@ -65,11 +57,10 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       endanglelim=endanglelim-0.1*2;
     }
   }
-  cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<endl;
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleTx=RayTracingFunctions::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
-  cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleTx<<" deg"<<endl;
+  //cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleTx<<" deg"<<endl;
   
   double * GetResultsAir=RayTracingFunctions::GetAirPropagationPar(LaunchAngleTx,AirTxHeight,IceLayerHeight);
   int FilledLayers=GetResultsAir[4*MaxLayers];
@@ -83,12 +74,6 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   double IncidentAngleonIce=GetResultsAir[1+(FilledLayers-1)*4];  
   
   delete [] GetResultsAir;
-
-  cout<<"***********Results for Air************"<<endl;
-  cout<<"TotalHorizontalDistanceinAir "<<TotalHorizontalDistanceinAir<<" m"<<endl;
-  cout<<"IncidentAngleonIce "<<IncidentAngleonIce<<" deg"<<endl;
-  cout<<"LvalueAir for "<<Lvalue<<endl;
-  cout<<"PropagationTimeAir "<<PropagationTimeAir<<" ns"<<endl;
   
   double * GetResultsIce=RayTracingFunctions::GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth,Lvalue);
   double TotalHorizontalDistanceinIce=GetResultsIce[0];
@@ -97,24 +82,12 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   double PropagationTimeIce=GetResultsIce[3]*pow(10,9);
   delete [] GetResultsIce;
 
-  cout<<" "<<endl;
-  cout<<"***********Results for Ice************"<<endl;
-  cout<<"TotalHorizontalDistanceinIce "<<TotalHorizontalDistanceinIce<<" m"<<endl;
-  cout<<"IncidentAngleonAntenna "<<IncidentAngleonAntenna<<" deg"<<endl;
-  cout<<"LvalueIce "<<Lvalue<<endl;
-  cout<<"PropagationTimeIce "<<PropagationTimeIce<<" ns"<<endl;
-
   double TotalHorizontalDistance=TotalHorizontalDistanceinIce+TotalHorizontalDistanceinAir;
   double TotalPropagationTime=PropagationTimeIce+PropagationTimeAir;
   
-  cout<<" "<<endl;
-  cout<<"***********Results for Ice + Air************"<<endl;
-  cout<<"TotalHorizontalDistance "<<TotalHorizontalDistance<<" m"<<endl;
-  cout<<"TotalPropagationTime "<<TotalPropagationTime<<" ns"<<endl;
-
+ 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////This section now is for storing and plotting the ray. We calculate the x and y coordinates of the ray as it travels through the air and ice
-  
   if(PlotRayPath==true){
     ////Print out the ray path x and y values in a file
     //ofstream aout("RayPathinAirnIce.txt");
@@ -124,11 +97,11 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     for(int ilayer=MaxLayers;ilayer>-1;ilayer--){
       //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer-1]/100<<endl;
       if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>=ATMLAY[ilayer-1]/100){
-	//cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
-	ilayer=-100;
+  	//cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
+  	ilayer=-100;
       }
       if(ilayer>-1){
-	skiplayer++;
+  	skiplayer++;
       }
     }
     int SkipLayersAbove=skiplayer;
@@ -139,24 +112,15 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     for(int ilayer=0;ilayer<MaxLayers;ilayer++){
       //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer+1]/100<<endl;
       if(IceLayerHeight>=ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
-	//cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
-	ilayer=100;
+  	//cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
+  	ilayer=100;
       }
       if(ilayer<MaxLayers){
-	skiplayer++;
+  	skiplayer++;
       }
     }
     int SkipLayersBelow=skiplayer;
     //cout<<"The total number of layers that need to be skipped from below is "<<skiplayer<<endl;
-    
-    TMultiGraph *mg=new TMultiGraph();
-    TMultiGraph *mgB=new TMultiGraph();
-  
-    TGraph *grRefracted=new TGraph();
-    TGraph *grStraight=new TGraph();
-    TGraph *grResidual=new TGraph();
-    TGraph *grIceLayer=new TGraph();
-    TGraph *grAirIce=new TGraph();
     
     double Start_nh=0;
     double StartHeight=0;
@@ -171,11 +135,11 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
  
       ////Set the starting height of the ray for propogation for that layer
       if(ilayer==MaxLayers-SkipLayersAbove-1){
-	////If this is the first layer then set the start height to be the height of the source
-	StartHeight=AirTxHeight;
+  	////If this is the first layer then set the start height to be the height of the source
+  	StartHeight=AirTxHeight;
       }else{
-	////If this is any layer after the first layer then set the start height to be the starting height of the layer
-	StartHeight=ATMLAY[ilayer+1]/100-0.00001;
+  	////If this is any layer after the first layer then set the start height to be the starting height of the layer
+  	StartHeight=ATMLAY[ilayer+1]/100-0.00001;
       }
 
       ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -183,16 +147,16 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       
       ////Set the stopping height of the ray for propogation for that layer
       if(ilayer==(SkipLayersBelow-1)+1){
-	////If this is the last layer then set the stopping height to be the height of the ice layer
-	StopHeight=IceLayerHeight;
+  	////If this is the last layer then set the stopping height to be the height of the ice layer
+  	StopHeight=IceLayerHeight;
       }else{
-	////If this is NOT the last layer then set the stopping height to be the end height of the layer
-	StopHeight=ATMLAY[ilayer]/100;
+  	////If this is NOT the last layer then set the stopping height to be the end height of the layer
+  	StopHeight=ATMLAY[ilayer]/100;
       }
       
       ////If this is the first layer then set the initial launch angle of the ray through the layers
       if(ilayer==MaxLayers-SkipLayersAbove-1){
-	StartAngle=180-LaunchAngleTx;
+  	StartAngle=180-LaunchAngleTx;
       }
       //cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<endl;
       
@@ -201,31 +165,29 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
       //// The value of the L parameter for that layer
       if(ilayer==MaxLayers-SkipLayersAbove-1){
-	double* GetHitPar=RayTracingFunctions::GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
-	TotalHorizontalDistance+=GetHitPar[0];
-	RecieveAngle=GetHitPar[1];
-	StartAngle=GetHitPar[1];
-	////Store in the values of A,B,C and L for tha layer
-	Lvalue=GetHitPar[2];
-	layerLs.push_back(GetHitPar[2]);
-	delete []GetHitPar;  
+  	double* GetHitPar=RayTracingFunctions::GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
+  	TotalHorizontalDistance+=GetHitPar[0];
+  	RecieveAngle=GetHitPar[1];
+  	StartAngle=GetHitPar[1];
+  	////Store in the values of A,B,C and L for tha layer
+  	Lvalue=GetHitPar[2];
+  	layerLs.push_back(GetHitPar[2]);
+  	delete []GetHitPar;  
       }
       if(ilayer<MaxLayers-SkipLayersAbove-1){
-	double nzStopHeight=RayTracingFunctions::Getnz_air(StopHeight);
-	double RecAng=asin(Lvalue/nzStopHeight);
-	RecAng=RecAng*(180/RayTracingFunctions::pi);
-	double THD=RayTracingFunctions::GetRayOpticalPath(RayTracingFunctions::A_air, StopHeight, StartHeight, Lvalue, 1);
-	TotalHorizontalDistance+=THD;
-	StartAngle=RecAng;
+  	double nzStopHeight=RayTracingFunctions::Getnz_air(StopHeight);
+  	double RecAng=asin(Lvalue/nzStopHeight);
+  	RecAng=RecAng*(180/RayTracingFunctions::pi);
+  	double THD=RayTracingFunctions::GetRayOpticalPath(RayTracingFunctions::A_air, StopHeight, StartHeight, Lvalue, 1);
+  	TotalHorizontalDistance+=THD;
+  	StartAngle=RecAng;
       ////Store in the values of A,B,C and L for tha layer
-	layerLs.push_back(Lvalue);
+  	layerLs.push_back(Lvalue);
       }
       //cout<<"start angle is "<<StartAngle<<" "<<GetHitPar[2]<<endl;
       
     }
 
-    cout<<"Total horizontal distance is "<<TotalHorizontalDistance<<endl;
-    
     ////Make a straight line at the same launch angle as the refracted ray in air to calculate the residual
     double StraightLine_slope=tan(RayTracingFunctions::pi/2-LaunchAngleTx*(RayTracingFunctions::pi/180));
     double StraightLine_y_intercept=AirTxHeight;
@@ -248,70 +210,41 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     for(int il=0;il<MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
     
       if(il==0){
-	////If this is the first layer then set the start height to be the height of the source
-	LayerStartHeight=AirTxHeight;
+  	////If this is the first layer then set the start height to be the height of the source
+  	LayerStartHeight=AirTxHeight;
       }else{
-	////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-	LayerStartHeight=LastHeight-0.00001;
+  	////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
+  	LayerStartHeight=LastHeight-0.00001;
       }
 
       if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
-	////If this is the last layer then set the stopping height to be the height of the ice layer
-	LayerStopHeight=IceLayerHeight-1;
+  	////If this is the last layer then set the stopping height to be the height of the ice layer
+  	LayerStopHeight=IceLayerHeight;
       }else{
-	////If this is NOT the last layer then set the stopping height to be the end height of the layer
-	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
+  	////If this is NOT the last layer then set the stopping height to be the end height of the layer
+  	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
       }
     
-      //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
-      //cout<<" new layer "<<endl;
       ////Start tracing out the ray as it propagates through the layer
       for(double i=LayerStartHeight;i>LayerStopHeight-0.01;i=i-0.01){
 	
-	////Get and Set the A,B,C and L parameters for the layer
-	params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};
-	params2b = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-(i)), RayTracingFunctions::GetC_air(-(i)), layerLs[il]};
+  	////Get and Set the A,B,C and L parameters for the layer
+  	params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};
+  	params2b = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-(i)), RayTracingFunctions::GetC_air(-(i)), layerLs[il]};
       
-	////Calculate the x (distance) value of the ray for given y (height) value
-	Refracted_x=RayTracingFunctions::fDnfR(-i,&params2a)-RayTracingFunctions::fDnfR(-(LayerStartHeight),&params2b)+LastRefracted_x;
+  	////Calculate the x (distance) value of the ray for given y (height) value
+  	Refracted_x=RayTracingFunctions::fDnfR(-i,&params2a)-RayTracingFunctions::fDnfR(-(LayerStartHeight),&params2b)+LastRefracted_x;
 	
-	////If the ray just started off in a new layer we might need to offset the x values of the new layer so that the ray aligns with the previous layer.
-	// if(ipoints>0 && fabs(i-LayerStartHeight-1)<2){
-	//   LayerHoriOffset=(Refracted_x-LastRefracted_x);
-	//   cout<<il<<" layer offset is "<<LayerHoriOffset<<endl;
-	// }
-	// Refracted_x=Refracted_x-LayerHoriOffset;
+  	////Caclulate the y value of the straight line
+  	double StraightLine_y=StraightLine_slope*Refracted_x+StraightLine_y_intercept;
 
-	////Caclulate the y value of the straight line
-	double StraightLine_y=StraightLine_slope*Refracted_x+StraightLine_y_intercept;
-
-	grAirIce->SetPoint(ipoints,Refracted_x,i);
-	grRefracted->SetPoint(ipoints,Refracted_x,i);
-	grStraight->SetPoint(ipoints,Refracted_x,StraightLine_y);
-	grIceLayer->SetPoint(ipoints,Refracted_x,IceLayerHeight);
+  	grAirIce->SetPoint(ipoints,displacement+Refracted_x,i);
       
-	////To make sure that the residual in air is only caculated above the ice surface
-	if(StraightLine_y>=IceLayerHeight){
-	  grResidual->SetPoint(ipoints,Refracted_x,i-StraightLine_y);
-	}
-
-	//cout<<ipoints<<" "<<Refracted_x<<" "<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<i-StraightLine_y<<endl;
-	//aout<<ipoints<<" "<<Refracted_x<<" "<<i<<endl;
-
-	// ////If you want to check the the transition between different layers uncomment these lines
-	// if(fabs(i-LayerStopHeight)<10){
-	//   cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<" "<<GetB_air(-i)<<" "<<GetC_air(-i)<<" "<<layerLs[il]<<" "<<fDnfR(-i,&params2a)<<" "<<-fDnfR(-(LayerStartHeight),&params2b)<<" "<<LayerStartHeight<<" "<<LastRefracted_x<<" "<<GetB_air(-LayerStartHeight)<<" "<<GetC_air(-LayerStartHeight)<<endl;
-	// }
-      
-	// if(fabs(i-LayerStartHeight)<10){
-	//   cout<<"ipoints= "<<ipoints<<" ,ref_x="<<Refracted_x<<" ,i="<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<StraightLine_y-i<<" "<<GetB_air(-i)<<" "<<GetC_air(-i)<<" "<<layerLs[il]<<" "<<fDnfR(-i,&params2a)<<" "<<-fDnfR(-(LayerStartHeight),&params2b)<<" "<<LayerStartHeight<<" "<<LastRefracted_x<<" "<<GetB_air(-LayerStartHeight)<<" "<<GetC_air(-LayerStartHeight)<<endl;
-	// }
-      
-	ipoints++;
-	LastHeight=i;
+  	ipoints++;
+  	LastHeight=i;
       }
       LastRefracted_x=Refracted_x;
-    }    
+    }
     
     ////Print out the ray path in ice too  
     struct RayTracingFunctions::fDnfR_params params3a;
@@ -322,63 +255,118 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       params3b = {RayTracingFunctions::A_ice, RayTracingFunctions::GetB_ice(0), RayTracingFunctions::GetC_ice(0), Lvalue};
 
       double refractedpath=LastRefracted_x-RayTracingFunctions::fDnfR((double)i,&params3a)+RayTracingFunctions::fDnfR(0,&params3b);
-      grAirIce->SetPoint(ipoints,refractedpath,(double)i+IceLayerHeight);
-      grIceLayer->SetPoint(ipoints,refractedpath,IceLayerHeight);
-      //aout<<ipoints<<" "<<refractedpath<<" "<<(double)i+IceLayerHeight<<endl;
+      grAirIce->SetPoint(ipoints,displacement+refractedpath,(double)i+IceLayerHeight);
       ipoints++;
     }
-
-    grRefracted->SetLineColor(2);//red
-    grStraight->SetLineColor(4);//blue
-    grRefracted->SetLineWidth(5);
-    grStraight->SetLineWidth(2);
-  
-    grStraight->SetTitle("Straight Line with same launch angle");
-    grRefracted->SetTitle("Refracted Ray");
-
-    TString mgtitle="Launch Angle=";
-    mgtitle+=180-LaunchAngleTx;
-    mgtitle+=" deg where 0 deg is straight down;Distance (m); Height (m)";
-    mg->SetTitle(mgtitle);
-    grResidual->SetTitle("Difference of Blue with Red;Distance (m); Height (m)");
-    mg->Add(grRefracted);
-    mg->Add(grStraight);
-
-    TCanvas *ca=new TCanvas("ca","ca");
-    ca->Divide(1,2);
-    ca->cd(1);
-    mg->Draw("AL");
-    ca->cd(1)->BuildLegend();
-
-    ca->cd(2);
-    grResidual->Draw("AL");
-    //grResidual->Fit("pol1","","");
-
-    mgB->SetTitle("RayPath through Air and Ice;Distance (m); Height (m)");
-    grAirIce->SetMarkerStyle(20);
-    grIceLayer->SetMarkerStyle(20);
-    grIceLayer->SetMarkerColor(kBlue);
-    mgB->Add(grAirIce);
-    mgB->Add(grIceLayer);
-
-    TCanvas *cb=new TCanvas("cb","cb");
-    cb->cd();
-    mgB->Draw("ALP");
-
-    // delete mg;
-    // delete mgB;
-
-    // delete grAirIce;
-    // delete grRefracted;
-    // delete grStraight;
-    // delete grResidual;
-    // delete grIceLayer;
     
   }
   
-  timestamp_t t1 = get_timestamp();
-  
+  timestamp_t t1 = get_timestamp();  
   double secs = (t1 - t0) / 1000000.0L;
-  cout<<"total time taken by the script: "<<secs<<" s"<<endl;
+  //cout<<"total time taken by the script: "<<secs<<" s"<<endl;
+
+  return 0;
+}
+
+void DrawShowerRays(){
+  RayTracingFunctions::MakeAtmosphere();
   
+  double pi=4*atan(1.0);
+  
+  double AntennaDepth=180;////Depth of antenna in the ice
+  double IceLayerHeight=2800;////Height where the ice layer starts off
+  
+  double initialheight=500+IceLayerHeight;
+  double showerangle=30;
+  double diststep=10;
+
+  double initialhdist=(initialheight-IceLayerHeight)*tan(showerangle*(pi/180));
+  initialhdist=initialhdist+100;
+  cout<<"initial h distance is "<<initialhdist<<", 100 m from impact point"<<endl; 
+    
+  int totalpositions=((initialheight-IceLayerHeight)/cos(showerangle*(pi/180)))/diststep;
+  totalpositions=100;
+  //cout<<"total positions are "<<totalpositions<<endl;
+
+  TMultiGraph *mg=new TMultiGraph();
+  TGraph *gr1=new TGraph();
+  TGraph *gr2=new TGraph();
+  TGraph *gr3[totalpositions];
+  for(int ipos=0;ipos<totalpositions;ipos++){
+    gr3[ipos]=new TGraph();
+  }
+  
+  Double_t layerdist=0;
+  Int_t ilayer=0;
+  while(layerdist<initialhdist){
+    gr1->SetPoint(ilayer,layerdist,IceLayerHeight);
+    layerdist+=50;
+    ilayer++;
+  }
+  gr1->SetPoint(ilayer,layerdist,IceLayerHeight);
+  
+  int ipos=0;
+    
+  double rotx=0;
+  double roty=IceLayerHeight+11;
+  double firstx=0;
+  
+  double hdist=0;
+  double x=0;
+  double y=0;
+
+  while(roty>=IceLayerHeight+10){
+    x=0;
+    y=initialheight-diststep*ipos;
+
+    TVector3 v1(x,y-(((initialheight-IceLayerHeight)/2)+IceLayerHeight),0);
+    v1.RotateZ(showerangle*(pi/180));
+    rotx=v1.X()-firstx;
+    roty=v1.Y()+(((initialheight-IceLayerHeight)/2)+IceLayerHeight);
+
+    if(ipos==0){
+      firstx=rotx;
+      rotx=0;
+      initialhdist=(roty-IceLayerHeight)*tan(showerangle*(pi/180));
+      initialhdist=initialhdist+100;
+      hdist=initialhdist;
+      //cout<<"initial h distance is "<<initialhdist<<endl; 
+    }
+    
+    if(roty>=10+IceLayerHeight){
+      // if(y>=IceLayerHeight){
+      // 	gr1->SetPoint(ipos,x,y);
+      // }
+      gr2->SetPoint(ipos,rotx,roty);
+      //cout<<ipos<<" "<<rotx<<" "<<hdist-rotx<<" "<<roty<<endl;
+      Air2IceRayTracing_gr(roty, hdist-rotx,IceLayerHeight, AntennaDepth,gr3[ipos],rotx);
+      gr3[ipos]->SetMarkerColor(ipos+30);
+      gr3[ipos]->SetLineColor(ipos+30);
+      ipos++;
+    }
+  }
+  
+  //gr1->SetMarkerStyle(20);
+  gr1->SetLineWidth(2);
+  gr2->SetMarkerStyle(20);
+
+  gr1->SetMarkerColor(kRed);
+  gr2->SetMarkerColor(kBlue);
+  
+  mg->Add(gr1);
+  mg->Add(gr2);
+
+  cout<<"total positions are "<<totalpositions<<" "<<ipos<<endl; 
+  for(int ip=0;ip<ipos;ip++){
+    mg->Add(gr3[ip]);
+  }
+  mg->SetTitle("Shower Zenith=30 deg, Antenna 100 m away from IP, 180 m deep ;Distance (m) ;Altitude (m)");
+  TCanvas *c1=new TCanvas("c1","c1");
+  c1->cd();
+  // mg->GetYaxis()->SetRangeUser(IceLayerHeight-AntennaDepth,IceLayerHeight+AntennaDepth);
+  // mg->GetXaxis()->SetRangeUser(hdist-10,hdist+2);  
+  // mg->GetYaxis()->SetRangeUser(IceLayerHeight-AntennaDepth,IceLayerHeight+AntennaDepth);
+  // mg->GetXaxis()->SetRangeUser(hdist-150,hdist+2);  
+
+  mg->Draw("ALP");  
 }

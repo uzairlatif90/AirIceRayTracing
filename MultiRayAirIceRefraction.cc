@@ -79,6 +79,10 @@ int MultiRayAirIceRefraction::readATMpar(){
     ain.close();
   }////if condition to check if file is open
 
+  abc[4][0]=abc[3][0];
+  abc[4][1]=abc[3][1];
+  abc[4][2]=abc[3][2];
+  
   return 0;
 }
 
@@ -151,7 +155,7 @@ int MultiRayAirIceRefraction::readnhFromFile(){
   nh_data[nh_data.size()-1].erase(nh_data[nh_data.size()-1].end() - 1);
   lognh_data[lognh_data.size()-1].erase(lognh_data[lognh_data.size()-1].end() - 1);
 
-  MaxLayers=h_data.size();////store the total number of layers present in the data
+  MaxLayers=h_data.size()+1;////store the total number of layers present in the data
   
   return 0;
 }

@@ -217,7 +217,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     //std::cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<std::endl;
     //std::cout<<" new layer "<<std::endl;
     ////Start tracing out the ray as it propagates through the layer
-    for(double i=LayerStartHeight-1;i>LayerStopHeight+1;i--){
+    for(double i=LayerStartHeight;i>LayerStopHeight-0.01;i=i-0.01){
       
       ////Get and Set the A,B,C and L parameters for the layer
       params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};
