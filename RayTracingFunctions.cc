@@ -200,6 +200,7 @@ double RayTracingFunctions::GetB_air(double z){
   }
  
   B=B_air[whichlayer];
+  //B=1e-9;
   return B;
 }
 
@@ -220,6 +221,7 @@ double RayTracingFunctions::GetC_air(double z){
     whichlayer=MaxLayers-1;
   }
   C=C_air[whichlayer];
+  //C=1e-9;
   return C;
 }
 
@@ -237,10 +239,13 @@ double RayTracingFunctions::Refl_S(double thetai, double IceLayerHeight){
   double n1=Nair;
   double n2=Nice;
   
-  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
   double num=n1*cos(thetai)-n2*sqterm;
   double den=n1*cos(thetai)+n2*sqterm;
   double RS=(num*num)/(den*den);
+  if(isnan(RS)){
+    RS=1;
+  }
   return (RS);
 }
 
@@ -251,10 +256,13 @@ double RayTracingFunctions::Refl_P(double thetai, double IceLayerHeight){
   double n1=Nair;
   double n2=Nice;
   
-  double sqterm=sqrt(1-pow(1-(n1/n2)*(sin(thetai)),2));
+  double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
   double num=n1*sqterm-n2*cos(thetai);
   double den=n1*sqterm+n2*cos(thetai);
   double RP=(num*num)/(den*den);
+  if(isnan(RP)){
+    RP=1;
+  }
   return (RP);
 }
 
