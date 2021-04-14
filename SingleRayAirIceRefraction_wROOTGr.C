@@ -4,7 +4,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   //void SingleRayAirIceRefraction_wROOTGr(){
 
   ////For recording how much time the process took
-  timestamp_t t0 = get_timestamp();
+  auto t1b = std::chrono::high_resolution_clock::now();
   
   // double AntennaDepth=200;////Depth of antenna in the ice
   // double RayLaunchAngle=124.765;////Initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 is vertically down
@@ -208,7 +208,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     
     if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
       ////If this is the last layer then set the stopping height to be the height of the ice layer
-      LayerStopHeight=IceLayerHeight-1;
+      LayerStopHeight=IceLayerHeight;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
       LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
@@ -320,9 +320,9 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   // flattened_h_data.clear();
   // flattened_nh_data.clear();
 
-  timestamp_t t1 = get_timestamp();
-  
-  double secs = (t1 - t0) / 1000000.0L;
-  cout<<"total time taken by the script: "<<secs<<" s"<<endl;
+  auto t2b = std::chrono::high_resolution_clock::now();
+  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
 
+  durationb=durationb/1000;
+  std::cout<<"total time taken by the script: "<<durationb<<" ms"<<std::endl;
 }

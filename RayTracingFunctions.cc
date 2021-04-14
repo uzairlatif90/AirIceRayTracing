@@ -489,22 +489,14 @@ double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth
 
 ////This function flattens out 2d std::vectors into 1d std::vectors
 std::vector<double> RayTracingFunctions::flatten(const std::vector<std::vector<double>>& v) {
-    size_t total_size = 0;
-    for (const auto& sub : v)
-        total_size += sub.size();
-    std::vector<double> result;
-    result.reserve(total_size);
-    for (const auto& sub : v)
-        result.insert(result.end(), sub.begin(), sub.end());
-    return result;
-}
-
-////This function is used to measure the amount of time the code takes
-typedef unsigned long long timestamp_t;
-static timestamp_t get_timestamp (){
-  struct timeval now;
-  gettimeofday (&now, NULL);
-  return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
+  size_t total_size = 0;
+  for (const auto& sub : v)
+    total_size += sub.size();
+  std::vector<double> result;
+  result.reserve(total_size);
+  for (const auto& sub : v)
+    result.insert(result.end(), sub.begin(), sub.end());
+  return result;
 }
 
 ////Get Propogation parameters for ray propagating in air

@@ -5,7 +5,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   RayTracingFunctions::MakeAtmosphere();
   
   ////For recording how much time the process took
-  timestamp_t t0 = get_timestamp();
+  auto t1b = std::chrono::high_resolution_clock::now();
 
   //cout<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<endl;
   
@@ -27,9 +27,12 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   F1.params = &params1;
 
   ////Set the initial angle limits for the minimisation
-  double startanglelim=91.5;
-  double endanglelim=178.5;
+  // double startanglelim=91.5;
+  // double endanglelim=178.5;
 
+  double startanglelim=91.5;
+  double endanglelim=180;
+  
   ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
   bool checknan=false;
   double TotalHorizontalDistanceinAirt=0;
@@ -43,10 +46,10 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     }
     delete []GetResultsAirTest1;
     
-    startanglelim=startanglelim-0.1;
+    startanglelim=startanglelim-0.0001;
     if(isnan(TotalHorizontalDistanceinAirt)==true){
       checknan=true;
-      startanglelim=startanglelim+0.1*2;
+      startanglelim=startanglelim+0.0001*2;
     }
   }
   checknan=false;
@@ -59,13 +62,16 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     }
     delete []GetResultsAirTest2;
 
-    endanglelim=endanglelim+0.1;
+    endanglelim=endanglelim+0.0001;
     if(isnan(TotalHorizontalDistanceinAirt)==true){
       checknan=true;
-      endanglelim=endanglelim-0.1*2;
+      endanglelim=endanglelim-0.0001*2;
     }
   }
   cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<endl;
+  
+  // startanglelim=92;
+  // endanglelim=180;
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleTx=RayTracingFunctions::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
@@ -85,8 +91,8 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   delete [] GetResultsAir;
 
   cout<<"***********Results for Air************"<<endl;
-  cout<<"TotalHorizontalDistanceinAir "<<TotalHorizontalDistanceinAir<<" m"<<endl;
-  cout<<"IncidentAngleonIce "<<IncidentAngleonIce<<" deg"<<endl;
+  cout<<setprecision(10)<<"TotalHorizontalDistanceinAir "<<TotalHorizontalDistanceinAir<<" m"<<endl;
+  cout<<setprecision(10)<<"IncidentAngleonIce "<<IncidentAngleonIce<<" deg"<<endl;
   cout<<"LvalueAir for "<<Lvalue<<endl;
   cout<<"PropagationTimeAir "<<PropagationTimeAir<<" ns"<<endl;
   
@@ -257,7 +263,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 
       if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
 	////If this is the last layer then set the stopping height to be the height of the ice layer
-	LayerStopHeight=IceLayerHeight-1;
+	LayerStopHeight=IceLayerHeight;
       }else{
 	////If this is NOT the last layer then set the stopping height to be the end height of the layer
 	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
@@ -316,15 +322,16 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     ////Print out the ray path in ice too  
     struct RayTracingFunctions::fDnfR_params params3a;
     struct RayTracingFunctions::fDnfR_params params3b;
-    
-    for(int i=0;i>-(AntennaDepth+1);i--){
+
+    //for(int i=0;i>-(0.1);i=i-1){
+    for(int i=0;i>-(AntennaDepth+1);i=i-1){
       params3a = {RayTracingFunctions::A_ice, RayTracingFunctions::GetB_ice(i), RayTracingFunctions::GetC_ice(i), Lvalue};
       params3b = {RayTracingFunctions::A_ice, RayTracingFunctions::GetB_ice(0), RayTracingFunctions::GetC_ice(0), Lvalue};
 
       double refractedpath=LastRefracted_x-RayTracingFunctions::fDnfR((double)i,&params3a)+RayTracingFunctions::fDnfR(0,&params3b);
       grAirIce->SetPoint(ipoints,refractedpath,(double)i+IceLayerHeight);
       grIceLayer->SetPoint(ipoints,refractedpath,IceLayerHeight);
-      //aout<<ipoints<<" "<<refractedpath<<" "<<(double)i+IceLayerHeight<<endl;
+      //cout<<ipoints<<" "<<refractedpath<<" "<<(double)i+IceLayerHeight<<" "<<i<<endl;
       ipoints++;
     }
 
@@ -337,10 +344,10 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     grRefracted->SetTitle("Refracted Ray");
 
     TString mgtitle="Launch Angle=";
-    mgtitle+=180-LaunchAngleTx;
+    mgtitle+=LaunchAngleTx;
     mgtitle+=" deg where 0 deg is straight down;Distance (m); Height (m)";
     mg->SetTitle(mgtitle);
-    grResidual->SetTitle("Difference of Blue with Red;Distance (m); Height (m)");
+    grResidual->SetTitle("Difference of Red with Blue;Distance (m); Height (m)");
     mg->Add(grRefracted);
     mg->Add(grStraight);
 
@@ -376,9 +383,9 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     
   }
   
-  timestamp_t t1 = get_timestamp();
-  
-  double secs = (t1 - t0) / 1000000.0L;
-  cout<<"total time taken by the script: "<<secs<<" s"<<endl;
-  
+  auto t2b = std::chrono::high_resolution_clock::now();
+  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
+
+  durationb=durationb/1000;
+  std::cout<<"total time taken by the script: "<<durationb<<" ms"<<std::endl;
 }

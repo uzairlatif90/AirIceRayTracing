@@ -3,7 +3,7 @@
 int main(int argc, char **argv){
   
   ////For recording how much time the process took
-  timestamp_t t0 = get_timestamp();
+  auto t1b = std::chrono::high_resolution_clock::now();
   
   if(argc==1){
     std::cout<<"No Extra Command Line Argument Passed Other Than Program Name"<<std::endl;
@@ -271,7 +271,7 @@ int main(int argc, char **argv){
 
       if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
 	////If this is the last layer then set the stopping height to be the height of the ice layer
-	LayerStopHeight=IceLayerHeight-1;
+	LayerStopHeight=IceLayerHeight;
       }else{
 	////If this is NOT the last layer then set the stopping height to be the end height of the layer
 	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
@@ -330,12 +330,12 @@ int main(int argc, char **argv){
       ipoints++;
     }
 
-  }
-  
-  timestamp_t t1 = get_timestamp();
-  
-  double secs = (t1 - t0) / 1000000.0L;
-  std::cout<<"total time taken by the script: "<<secs<<" s"<<std::endl;
+  } 
+ 
+  auto t2b = std::chrono::high_resolution_clock::now();
+  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
 
+  durationb=durationb/1000;
+  std::cout<<"total time taken by the script: "<<durationb<<" ms"<<std::endl;
   return 0;
 }

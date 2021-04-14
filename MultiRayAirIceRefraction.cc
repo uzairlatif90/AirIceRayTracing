@@ -525,14 +525,6 @@ std::vector<double> MultiRayAirIceRefraction::flatten(const std::vector<std::vec
     return result;
 }
 
-////This function is used to measure the amount of time the code takes
-typedef unsigned long long timestamp_t;
-static timestamp_t get_timestamp (){
-  struct timeval now;
-  gettimeofday (&now, NULL);
-  return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
-}
-
 ////Get Propogation parameters for ray propagating in air
 double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, double AirTxHeight, double IceLayerHeight){
   double *output=new double[4*MaxLayers+1];
@@ -1202,7 +1194,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   IceLayerHeight=IceLayerHeight/100;
   
   ////For recording how much time the process took
-  timestamp_t t0 = get_timestamp();
+  auto t1b = std::chrono::high_resolution_clock::now();
   
   ////Print out the entry number, the Tx height, ice layer height, Tx height above the icelayer height, total horizontal distance on surface, total horizontal distance in ice, RayLaunchAngle at Tx, incident angle on ice and recievd angle in ice at the antenna inside this file
   MakeAtmosphere();
@@ -1420,10 +1412,11 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   temp7.clear();
   temp8.clear();
   
-  timestamp_t t1 = get_timestamp();
-  
-  double secs = (t1 - t0) / 1000000.0L;
-  std::cout<<"total time taken by the script to generate the table: "<<secs<<" s"<<std::endl;
+  auto t2b = std::chrono::high_resolution_clock::now();
+  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
+
+  durationb=durationb/1000000;
+  std::cout<<"total time taken by the script to generate the table: "<<durationb<<" s"<<std::endl;
   return 0;
   
 }
