@@ -65,7 +65,10 @@ int MultiRayAirIceRefraction::readATMpar(){
 	for (int i=0; i<5; i++){ ATMLAY[i]=dummya[i]; }
       }    
       if(n1==1){
-	for (int i=0; i<5; i++){ abc[i][0]=dummya[i]; }
+	for (int i=0; i<5; i++){
+	  abc[i][0]=dummya[i];
+	  cout<<i<<" "<<dummya[i]<<endl;
+	}
       }
       if(n1==2){
 	for (int i=0; i<5; i++){ abc[i][1]=dummya[i]; }
@@ -807,8 +810,8 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
 
   double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth,LvalueAir);
   double TotalHorizontalDistanceinIce=GetResultsIce[0];
-  // double IncidentAngleonAntenna=GetResultsIce[1];
-  // double LvalueIce=GetResultsIce[2];
+  //double IncidentAngleonAntenna=GetResultsIce[1];
+  //double LvalueIce=GetResultsIce[2];
   double PropagationTimeIce=GetResultsIce[3];
   delete [] GetResultsIce;
 
@@ -1089,7 +1092,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
   double AirTxHeight=SrcHeightASL/100;////Height of the source
   double HorizontalDistance=HorizontalDistanceToRx/100;////Horizontal distance
   IceLayerHeight=IceLayerHeight/100;////Height where the ice layer starts off
-  double AntennaDepth=RxDepthBelowIceBoundary/100;////Depth of antenna in the ice
+  //double AntennaDepth=RxDepthBelowIceBoundary/100;////Depth of antenna in the ice
 
   //cout<<"Table values "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<endl;
   // double PropagationTimeIce=0;
@@ -1207,7 +1210,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   ////Define variables for the loop over Tx height and ray launch angle
   double RayLaunchAngleInAir=0;////Set zero for now and 0 deg straight up. This variable defines the initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 deg is straight up
   //double AirTxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];////Maximum height available with the refractive index data
-  double AirTxHeight=100000;///Maximum height available with the refractive index data
+  double AirTxHeight=100000;////Maximum height available with the refractive index data
   
   // ////Set the variables for the for loop that will loop over the launch angle values. All values are in degrees
   // double AngleStepSize=0.5;
@@ -1296,7 +1299,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
 	    StartHeight=ATMLAY[ilayer+1]/100-0.00001;
 	  }
 	
-	  ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
+	  ////Since we have the starting height now we can find out the refactive index at that height
 	  Start_nh=Getnz_air(StartHeight);
 	
 	  ////Set the staopping height of the ray for propogation for that layer
@@ -1335,9 +1338,9 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
             
 	////Set the starting depth of the ray for propogation to at the ice surface
 	double StartDepth=0.0;
-	////Since we have the starting height of the ice layer we can find out the refactive index of air at that height from data using spline interpolation
-	//double Start_nh=gsl_spline_eval(spline, IceLayerHeight, accelerator);
-	Start_nh=gsl_spline_eval(spline, IceLayerHeight, accelerator);
+	////Since we have the starting height of the ice layer we can find out the refactive index of air at that height
+	Start_nh=Getnz_air(StartHeight);
+	
 	////Set the stopping depth of the ray for propogation to be the depth of the antenna
 	StopHeight=AntennaDepth;
 	////Set the initial launch angle or the angle of incidence of the ray
