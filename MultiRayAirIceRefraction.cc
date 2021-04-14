@@ -65,10 +65,7 @@ int MultiRayAirIceRefraction::readATMpar(){
 	for (int i=0; i<5; i++){ ATMLAY[i]=dummya[i]; }
       }    
       if(n1==1){
-	for (int i=0; i<5; i++){
-	  abc[i][0]=dummya[i];
-	  cout<<i<<" "<<dummya[i]<<endl;
-	}
+	for (int i=0; i<5; i++){abc[i][0]=dummya[i];}
       }
       if(n1==2){
 	for (int i=0; i<5; i++){ abc[i][1]=dummya[i]; }
@@ -1339,7 +1336,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
 	////Set the starting depth of the ray for propogation to at the ice surface
 	double StartDepth=0.0;
 	////Since we have the starting height of the ice layer we can find out the refactive index of air at that height
-	Start_nh=Getnz_air(StartHeight);
+	Start_nh=Getnz_air(IceLayerHeight);
 	
 	////Set the stopping depth of the ray for propogation to be the depth of the antenna
 	StopHeight=AntennaDepth;
@@ -1363,39 +1360,39 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
       
 	//if(isnan(TotalHorizontalDistanceInAir)==false){
 	
-	  ////define dummy/temporary variables for storing data
-	double dummy1,dummy2,dummy3,dummy4,dummy5,dummy6,dummy7,dummy8,dummy9,dummy10,dummy11,dummy12,dummy13,dummy14,dummy15,dummy16;  
-	  
-	  dummy1=ifileentry;
-	  dummy2=AirTxHeight;
-	  dummy3=TotalHorizontalDistanceInAir + TotalHorizontalDistanceInIce;
-	  dummy4=TotalHorizontalDistanceInAir;
-	  dummy5=TotalHorizontalDistanceInIce;
-	  dummy6=(TimeInIce+TimeInAir)*MultiRayAirIceRefraction::spedc;
-	  dummy7=TimeInAir*MultiRayAirIceRefraction::spedc;
-	  dummy8=TimeInIce*MultiRayAirIceRefraction::spedc;
-	  dummy9=(TimeInIce+TimeInAir)*pow(10,9);
-	  dummy10=TimeInAir*pow(10,9);
-	  dummy11=TimeInIce*pow(10,9);
-	  dummy12=RayLaunchAngleInAir;
-	  dummy13=IncidentAngleonIce;
-	  dummy14=RecievdAngleInIce;
-	  dummy15=MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
-	  dummy16=MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+	////define dummy/temporary variables for storing data
+	double dummy[16];
+        for(int idum=0;idum<16;idum++){
+          dummy[idum]=0;
+        }
 
-	  //	  cout<<dummy1<<" "<<dummy2<<" "<<dummy3<<" "<<dummy4<<" "<<dummy5<<" "<<dummy6<<" "<<dummy7<<" "<<dummy8<<" "<<dummy9<<" "<<dummy10<<" "<<dummy11<<" "<<dummy12<<" "<<dummy13<<" "<<dummy14<<endl;;  
-	  
-	  temp1.push_back(dummy2);///AirTx Height
-	  temp2.push_back(dummy3);///THDTotal
-	  temp3.push_back(dummy8);///OpticalPathIce
-	  temp4.push_back(dummy7);///OpticalPathAir
-	  temp5.push_back(dummy12);///LaunchAngleAir
-	  temp6.push_back(dummy4);///THDAir
-	  temp7.push_back(dummy15);///THDAir
-	  temp8.push_back(dummy16);///THDAir
+        dummy[0]=ifileentry;
+        dummy[1]=AirTxHeight;
+        dummy[2]=TotalHorizontalDistanceInAir + TotalHorizontalDistanceInIce;
+        dummy[3]=TotalHorizontalDistanceInAir;
+        dummy[4]=TotalHorizontalDistanceInIce;
+        dummy[5]=(TimeInIce+TimeInAir)*MultiRayAirIceRefraction::spedc;
+        dummy[6]=TimeInAir*MultiRayAirIceRefraction::spedc;
+        dummy[7]=TimeInIce*MultiRayAirIceRefraction::spedc;
+        dummy[8]=(TimeInIce+TimeInAir)*pow(10,9);
+        dummy[9]=TimeInAir*pow(10,9);
+        dummy[10]=TimeInIce*pow(10,9);
+        dummy[11]=RayLaunchAngleInAir;
+        dummy[12]=IncidentAngleonIce;
+        dummy[13]=RecievdAngleInIce;
+        dummy[14]=MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+        dummy[15]=MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
 
-	  ifileentry++;
-	  //}
+        temp1.push_back(dummy[1]);///AirTx Height
+        temp2.push_back(dummy[2]);///THDTotal          
+        temp3.push_back(dummy[7]);///OpticalPathIce
+        temp4.push_back(dummy[6]);///OpticalPathAir
+        temp5.push_back(dummy[11]);///LaunchAngleAir          
+        temp6.push_back(dummy[3]);///THDAir
+        temp7.push_back(dummy[14]);///ReflectionCoefficientS
+        temp8.push_back(dummy[15]);///ReflectionCoefficientP
+	ifileentry++;
+	//}
 	delete[] GetHitPar;
      
       }//// end of iang loop
