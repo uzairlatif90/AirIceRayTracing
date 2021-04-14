@@ -387,6 +387,10 @@ double MultiRayAirIceRefraction::GetRayOpticalPath(double A, double RxDepth, dou
   
   struct MultiRayAirIceRefraction::fDnfR_params params2a;
   struct MultiRayAirIceRefraction::fDnfR_params params2b;
+  ////just initialise the parameters
+  params2a = {0,0,0,0};
+  params2b = {0,0,0,0};
+  
   if(AirOrIce==0){
     //std::cout<<"in ice"<<std::endl;
     params2a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), Lvalue};
@@ -579,7 +583,7 @@ double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, d
     }
     
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-    Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
+    Start_nh=Getnz_air(StartHeight);
     
     ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){
@@ -642,7 +646,7 @@ double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, d
 double * MultiRayAirIceRefraction::GetIcePropagationPar(double IncidentAngleonIce, double IceLayerHeight, double AntennaDepth, double Lvalue){
   double *output=new double[4];
 
-  double StartAngle=IncidentAngleonIce;
+  //double StartAngle=IncidentAngleonIce;
   double StartDepth=0.0;
   double StopDepth=AntennaDepth;
   double nzStopDepth=Getnz_ice(StopDepth);
@@ -803,8 +807,8 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
 
   double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth,LvalueAir);
   double TotalHorizontalDistanceinIce=GetResultsIce[0];
-  double IncidentAngleonAntenna=GetResultsIce[1];
-  double LvalueIce=GetResultsIce[2];
+  // double IncidentAngleonAntenna=GetResultsIce[1];
+  // double LvalueIce=GetResultsIce[2];
   double PropagationTimeIce=GetResultsIce[3];
   delete [] GetResultsIce;
 
@@ -868,17 +872,18 @@ double MultiRayAirIceRefraction::Extrapolate(int Par, int index, double TotalHor
 
 ////Find the limit to extrapolate for all the parameters using the Air Launch Angle parameter
 double MultiRayAirIceRefraction::FindExtrapolationLimit( int index, double TotalHorizontalDistance, int AntennaNumber){
-  double x1,x2,y1,y2,x3,m,c,y3,xlimit;
+  double x1,x2,y1,y2,m,c,xlimit;
+  //double y3,x3;
   
   x1=(AllTableAllAntData[AntennaNumber][1][index]);
   x2=(AllTableAllAntData[AntennaNumber][1][index+1]);
   y1=AllTableAllAntData[AntennaNumber][4][index];
   y2=AllTableAllAntData[AntennaNumber][4][index+1];
-  x3=(TotalHorizontalDistance);
+  //x3=(TotalHorizontalDistance);
   
   m=(y1-y2)/(x1-x2);
   c=y1-m*x1;
-  y3=m*x3+c;
+  //y3=m*x3+c;
   xlimit=(90-c)/m;
   
   return xlimit;
@@ -923,7 +928,7 @@ int MultiRayAirIceRefraction::FindClosestTHD(double ParValue, int StartIndex, in
   double minimum=100000000000;
   int index2=0;
   double minval=0;
-  double lastminval=0;
+  //double lastminval=0;
   for(int ipnt=StartIndex;ipnt<EndIndex+1;ipnt++){
     minval=fabs(AllTableAllAntData[AntennaNumber][1][ipnt]-ParValue);
     if(minval<minimum && AllTableAllAntData[AntennaNumber][1][ipnt]>ParValue){
@@ -932,7 +937,7 @@ int MultiRayAirIceRefraction::FindClosestTHD(double ParValue, int StartIndex, in
       index2=ipnt; 
       break;
     }
-    lastminval=minval;
+    //lastminval=minval;
   }
   double index1=index2-1;
 
@@ -1087,17 +1092,17 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
   double AntennaDepth=RxDepthBelowIceBoundary/100;////Depth of antenna in the ice
 
   //cout<<"Table values "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<endl;
-  double PropagationTimeIce=0;
-  double PropagationTimeAir=0;
-  double LaunchAngleAir=0;
-  double TotalHorizontalDistanceinAir=0;
+  // double PropagationTimeIce=0;
+  // double PropagationTimeAir=0;
+  // double LaunchAngleAir=0;
+  // double TotalHorizontalDistanceinAir=0;
   //double TotalHorizontalDistance=0;
 
   int TotalTableEntries=AllTableAllAntData[AntennaNumber][0].size()-1;
   MaxAirTxHeight=AllTableAllAntData[AntennaNumber][0][0];
   MinAirTxHeight=AllTableAllAntData[AntennaNumber][0][TotalTableEntries];
   
-  double x1,x2,y1,y2;
+  double x1=0,x2=0,y1=0,y2=0;
   double AirTxHeight1,AirTxHeight2;
   double Par1[6];
   double Par2[6];
@@ -1201,8 +1206,9 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
  
   ////Define variables for the loop over Tx height and ray launch angle
   double RayLaunchAngleInAir=0;////Set zero for now and 0 deg straight up. This variable defines the initial launch angle of the ray w.r.t to the vertical in the atmosphere. 0 deg is straight up
-  double AirTxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];////Maximum height available with the refractive index data
-
+  //double AirTxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];////Maximum height available with the refractive index data
+  double AirTxHeight=100000;///Maximum height available with the refractive index data
+  
   // ////Set the variables for the for loop that will loop over the launch angle values. All values are in degrees
   // double AngleStepSize=0.5;
   // double LoopStartAngle=92;
@@ -1229,6 +1235,9 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   ////Start looping over the Tx Height and Launch angle values
   for(int ihei=0;ihei<TotalHeightSteps;ihei++){
     AirTxHeight=LoopStartHeight-HeightStepSize*ihei;
+    if(AirTxHeight!=IceLayerHeight && ihei==TotalHeightSteps-1){
+      AirTxHeight=IceLayerHeight;
+    }
     if(AirTxHeight>0){
       for(int iang=0;iang<TotalAngleSteps;iang++){
 	RayLaunchAngleInAir=LoopStartAngle+AngleStepSize*iang;
@@ -1288,7 +1297,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
 	  }
 	
 	  ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-	  Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
+	  Start_nh=Getnz_air(StartHeight);
 	
 	  ////Set the staopping height of the ray for propogation for that layer
 	  if(ilayer==(SkipLayersBelow-1)+1){
