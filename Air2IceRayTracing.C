@@ -1,10 +1,7 @@
 #include "RayTracingFunctions.cc"
 
 int main(int argc, char **argv){
-  
-  ////For recording how much time the process took
-  auto t1b = std::chrono::high_resolution_clock::now();
-  
+    
   if(argc==1){
     std::cout<<"No Extra Command Line Argument Passed Other Than Program Name"<<std::endl;
     std::cout<<"Example run command: ./Air2IceRayTracing 5000 1000 3000 200"<<std::endl;
@@ -31,8 +28,13 @@ int main(int argc, char **argv){
     std::cout<<"Here 5000 m is Tx Height in air in m, 1000 is the horizontal distance btw Tx in air and Rx in ice in m, 3000 is Ice Layer Height in m and 200 is the Antenna Depth in ice in m"<<std::endl;
     return 0;
   }
-  
+
+  ////For recording how much time the process took
+  auto t1b = std::chrono::high_resolution_clock::now();
+
+  auto t1b_atm = std::chrono::high_resolution_clock::now();
   RayTracingFunctions::MakeAtmosphere();
+  auto t2b_atm = std::chrono::high_resolution_clock::now();
   
   double AirTxHeight=atof(argv[1]);////Height of the source
   double HorizontalDistance=atof(argv[2]);////Horizontal distance
@@ -43,7 +45,7 @@ int main(int argc, char **argv){
   // double HorizontalDistance=1000;////Horizontal distance
   // double IceLayerHeight=3000;////Height where the ice layer starts off
   // double AntennaDepth=200;////Depth of antenna in the ice  
-  bool StoreRayPath=false;
+  bool StoreRayPath=true;
   
   gsl_function F1;
   struct  RayTracingFunctions::MinforLAng_params params1 = { AirTxHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};
@@ -51,14 +53,14 @@ int main(int argc, char **argv){
   F1.params = &params1;
 
   ////Set the initial angle limits for the minimisation
-  double startanglelim=91.5;
-  double endanglelim=178.5;
+  double startanglelim=90;
+  double endanglelim=180;
 
   ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
   bool checknan=false;
   double TotalHorizontalDistanceinAirt=0;
   int FilledLayerst=0;
-  while(checknan==false){
+  while(checknan==false && startanglelim>89.9){
     double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
     TotalHorizontalDistanceinAirt=0;
     FilledLayerst=GetResultsAirTest1[4*MaxLayers];
@@ -67,14 +69,15 @@ int main(int argc, char **argv){
     }
     delete []GetResultsAirTest1;
     
-    startanglelim=startanglelim-0.1;
-    if(isnan(TotalHorizontalDistanceinAirt)==true){
+    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
       checknan=true;
-      startanglelim=startanglelim+0.1*2;
+    }else{
+      startanglelim=startanglelim+0.05;
     }
   }
+  
   checknan=false;
-  while(checknan==false){
+  while(checknan==false && endanglelim<180.1){
     double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,IceLayerHeight);
     TotalHorizontalDistanceinAirt=0;
     FilledLayerst=GetResultsAirTest2[4*MaxLayers];
@@ -82,14 +85,18 @@ int main(int argc, char **argv){
       TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
     }
     delete []GetResultsAirTest2;
-
-    endanglelim=endanglelim+0.1;
-    if(isnan(TotalHorizontalDistanceinAirt)==true){
+    
+    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
       checknan=true;
-      endanglelim=endanglelim-0.1*2;
+    }else{
+      endanglelim=endanglelim-0.05;
     }
   }
-  std::cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<std::endl;
+
+  std::cout<<"Launch Angle search range is:  Startangle "<<startanglelim<<" ,Endangle "<<endanglelim<<std::endl;
+  // //std::cout<<" "<<std::endl;
+
+  auto t1b_air = std::chrono::high_resolution_clock::now();
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleAir= RayTracingFunctions::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
@@ -107,11 +114,16 @@ int main(int argc, char **argv){
   double IncidentAngleonIce=GetResultsAir[1+(FilledLayers-1)*4];  
   delete [] GetResultsAir;
 
+  auto t2b_air = std::chrono::high_resolution_clock::now();
+  
+  std::cout<<" "<<std::endl;
   std::cout<<"***********Results for Air************"<<std::endl;
   std::cout<<"TotalHorizontalDistanceinAir "<<TotalHorizontalDistanceinAir<<" m"<<std::endl;
   std::cout<<"IncidentAngleonIce "<<IncidentAngleonIce<<" deg"<<std::endl;
   std::cout<<"LvalueAir for "<<Lvalue<<std::endl;
   std::cout<<"PropagationTimeAir "<<PropagationTimeAir<<" ns"<<std::endl;
+
+  auto t1b_ice = std::chrono::high_resolution_clock::now();
   
   double * GetResultsIce=RayTracingFunctions::GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth,Lvalue);
   double TotalHorizontalDistanceinIce=GetResultsIce[0];
@@ -120,6 +132,8 @@ int main(int argc, char **argv){
   double PropagationTimeIce=GetResultsIce[3]*pow(10,9);
   delete [] GetResultsIce;
 
+  auto t2b_ice = std::chrono::high_resolution_clock::now();
+  
   std::cout<<" "<<std::endl;
   std::cout<<"***********Results for Ice************"<<std::endl;
   std::cout<<"TotalHorizontalDistanceinIce "<<TotalHorizontalDistanceinIce<<" m"<<std::endl;
@@ -134,10 +148,29 @@ int main(int argc, char **argv){
   std::cout<<"***********Results for Ice + Air************"<<std::endl;
   std::cout<<"TotalHorizontalDistance "<<TotalHorizontalDistance<<" m"<<std::endl;
   std::cout<<"TotalPropagationTime "<<TotalPropagationTime<<" ns"<<std::endl;
+
+  auto t2b = std::chrono::high_resolution_clock::now();
+  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
+  auto durationb_ice = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b_ice - t1b_ice ).count();
+  auto durationb_air = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b_air - t1b_air ).count();
+  auto durationb_atm = std::chrono::duration_cast<std::chrono::microseconds>( t2b_atm - t1b_atm ).count();
+
+  durationb=durationb/1000;
+  durationb_ice=durationb_ice;
+  durationb_air=durationb_air;
+  durationb_atm=durationb_atm/1000;
+  std::cout<<"total time taken by the script to do solution calcuation: "<<durationb<<" ms"<<std::endl;
+  std::cout<<"total time taken by the script to do solution calcuation for Ice: "<<durationb_ice<<" ns"<<std::endl;
+  std::cout<<"total time taken by the script to do solution calcuation for Air: "<<durationb_air<<" ns"<<std::endl;
+  std::cout<<"total time taken by the script to do solution calcuation for Atm: "<<durationb_atm<<" ms"<<std::endl;
+  std::cout<<" "<<std::endl;
   
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ////This section now is for storing and plotting the ray. We calculate the x and y coordinates of the ray as it travels through the air and ice
 
+  ////For recording how much time the process took
+  t1b = std::chrono::high_resolution_clock::now();
+  
   if(StoreRayPath==true){
     ////Print out the ray path x and y values in a file
     std::ofstream aout("RayPathinAirnIce.txt");
@@ -171,7 +204,8 @@ int main(int argc, char **argv){
     }
     int SkipLayersBelow=skiplayer;
     //std::cout<<"The total number of layers that need to be skipped from below is "<<skiplayer<<std::endl;
-    
+    //std::cout<<"max layers "<<MaxLayers<<std::endl;
+  
     double Start_nh=0;
     double StartHeight=0;
     double StopHeight=0;
@@ -190,7 +224,7 @@ int main(int argc, char **argv){
 	StartHeight=AirTxHeight;
       }else{
 	////If this is any layer after the first layer then set the start height to be the starting height of the layer
-	StartHeight=ATMLAY[ilayer+1]/100-0.00001;
+	StartHeight=ATMLAY[ilayer+1]/100;
       }
 
       ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -238,7 +272,7 @@ int main(int argc, char **argv){
       //std::cout<<"Total horizontal distance is "<<TotalHorizontalDistance<<" "<<GetHitPar[0]<<std::endl;
     }
 
-    std::cout<<"Total horizontal distance is "<<TotalHorizontalDistance<<std::endl;
+    //std::cout<<"Total horizontal distance is "<<TotalHorizontalDistance<<std::endl;
     
     ////Make a straight line at the same launch angle as the refracted ray in air to calculate the residual
     double StraightLine_slope=tan(RayTracingFunctions::pi/2-LaunchAngleAir*(RayTracingFunctions::pi/180));
@@ -266,7 +300,7 @@ int main(int argc, char **argv){
 	LayerStartHeight=AirTxHeight;
       }else{
 	////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-	LayerStartHeight=LastHeight-0.00001;
+	LayerStartHeight=LastHeight;
       }
 
       if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
@@ -274,13 +308,17 @@ int main(int argc, char **argv){
 	LayerStopHeight=IceLayerHeight;
       }else{
 	////If this is NOT the last layer then set the stopping height to be the end height of the layer
-	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
+	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100);
       }
     
       //std::cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<std::endl;
       //std::cout<<" new layer "<<std::endl;
       ////Start tracing out the ray as it propagates through the layer
-      for(double i=LayerStartHeight-1;i>LayerStopHeight+1;i--){
+      for(double i=LayerStartHeight;i>LayerStopHeight-1;i=i-1){
+
+	if(i<LayerStopHeight){
+	  i=LayerStopHeight;
+	}
 	
 	////Get and Set the A,B,C and L parameters for the layer
 	params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};
@@ -321,7 +359,7 @@ int main(int argc, char **argv){
     struct RayTracingFunctions::fDnfR_params params3a;
     struct RayTracingFunctions::fDnfR_params params3b;
     
-    for(int i=0;i>-(AntennaDepth+1);i--){
+    for(int i=0;i>-(AntennaDepth+1);i=i-1){
       params3a = {RayTracingFunctions::A_ice, RayTracingFunctions::GetB_ice(i), RayTracingFunctions::GetC_ice(i), Lvalue};
       params3b = {RayTracingFunctions::A_ice, RayTracingFunctions::GetB_ice(0), RayTracingFunctions::GetC_ice(0), Lvalue};
 
@@ -332,10 +370,11 @@ int main(int argc, char **argv){
 
   } 
  
-  auto t2b = std::chrono::high_resolution_clock::now();
-  auto durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
+  t2b = std::chrono::high_resolution_clock::now();
+  durationb = std::chrono::duration_cast<std::chrono::microseconds>( t2b - t1b ).count();
 
   durationb=durationb/1000;
-  std::cout<<"total time taken by the script: "<<durationb<<" ms"<<std::endl;
+  std::cout<<"total time taken by the script to store rays: "<<durationb<<" ms"<<std::endl;
+
   return 0;
 }

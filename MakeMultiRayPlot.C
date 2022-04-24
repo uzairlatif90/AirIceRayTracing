@@ -34,7 +34,7 @@ void MakeMultiRayPlot(Double_t z0, Double_t LaunchInterval){
     if(zmax>1e-5){
       zn=ZLowerLimit;
       /* This function returns the x and z values for the full Refracted ray path in a TGraph and also prints out the ray path in a text file */
-      grIce[iang]=IceRayTracing::GetFullRefractedRayPath(z0,DummyVariable,ZLowerLimit,zmax,LvalueRa);
+      grIce[iang]=IceRayTracing::GetFullRefractedRayPath(z0,DummyVariable,ZLowerLimit,zmax,LvalueRa,0);
     }else{
       zn=ZLowerLimit;
       /* This function returns the x and z values for the full Reflected ray path in a TGraph and also prints out the ray path in a text file */

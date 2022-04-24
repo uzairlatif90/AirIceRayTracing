@@ -27,18 +27,17 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
   F1.params = &params1;
 
   ////Set the initial angle limits for the minimisation
-  // double startanglelim=91.5;
-  // double endanglelim=178.5;
 
-  double startanglelim=91.5;
+  ////Set the initial angle limits for the minimisation
+  double startanglelim=90;
   double endanglelim=180;
-  
+
   ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
   bool checknan=false;
   double TotalHorizontalDistanceinAirt=0;
   int FilledLayerst=0;
-  while(checknan==false){
-    double *GetResultsAirTest1=RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
+  while(checknan==false && startanglelim>89.9){
+    double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
     TotalHorizontalDistanceinAirt=0;
     FilledLayerst=GetResultsAirTest1[4*MaxLayers];
     for(int i=0;i<FilledLayerst;i++){
@@ -46,38 +45,39 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     }
     delete []GetResultsAirTest1;
     
-    startanglelim=startanglelim-0.0001;
-    if(isnan(TotalHorizontalDistanceinAirt)==true){
+    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
       checknan=true;
-      startanglelim=startanglelim+0.0001*2;
+    }else{
+      startanglelim=startanglelim+0.05;
     }
   }
+  
   checknan=false;
-  while(checknan==false){
-    double *GetResultsAirTest2=RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,IceLayerHeight);
+  while(checknan==false && endanglelim<180.1){
+    double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,IceLayerHeight);
     TotalHorizontalDistanceinAirt=0;
     FilledLayerst=GetResultsAirTest2[4*MaxLayers];
     for(int i=0;i<FilledLayerst;i++){
       TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
     }
     delete []GetResultsAirTest2;
-
-    endanglelim=endanglelim+0.0001;
-    if(isnan(TotalHorizontalDistanceinAirt)==true){
+    
+    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
       checknan=true;
-      endanglelim=endanglelim-0.0001*2;
+    }else{
+      endanglelim=endanglelim-0.05;
     }
   }
-  cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<endl;
-  
-  // startanglelim=92;
-  // endanglelim=180;
+
+  std::cout<<"Launch Angle search range is:  Startangle "<<startanglelim<<" ,Endangle "<<endanglelim<<std::endl;
+  // //std::cout<<" "<<std::endl;
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleTx=RayTracingFunctions::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
   cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleTx<<" deg"<<endl;
-  
+ 
   double * GetResultsAir=RayTracingFunctions::GetAirPropagationPar(LaunchAngleTx,AirTxHeight,IceLayerHeight);
+ 
   int FilledLayers=GetResultsAir[4*MaxLayers];
   double TotalHorizontalDistanceinAir=0;
   double PropagationTimeAir=0;
@@ -181,7 +181,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 	StartHeight=AirTxHeight;
       }else{
 	////If this is any layer after the first layer then set the start height to be the starting height of the layer
-	StartHeight=ATMLAY[ilayer+1]/100-0.00001;
+	StartHeight=ATMLAY[ilayer+1]/100;
       }
 
       ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -201,6 +201,8 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 	StartAngle=180-LaunchAngleTx;
       }
       //cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<endl;
+
+      //cout<<ilayer<<" StartingHeight="<<StartHeight<<" "<<gsl_spline_eval(spline, StartHeight, accelerator)<<" ,StoppingHeight= "<<StopHeight<<" "<<gsl_spline_eval(spline, StopHeight, accelerator)<<endl;
       
       ////Get the hit parameters from the function. The output is:
       //// How much horizontal distance did the ray travel in the layer
@@ -249,7 +251,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
     ////Get and Set the A,B,C and L parameters for the layer
     struct RayTracingFunctions::fDnfR_params params2a;
     struct RayTracingFunctions::fDnfR_params params2b;
-
+    
     ////Start looping over the layers to trace out the ray
     for(int il=0;il<MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
     
@@ -258,7 +260,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 	LayerStartHeight=AirTxHeight;
       }else{
 	////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-	LayerStartHeight=LastHeight-0.00001;
+	LayerStartHeight=LastHeight;
       }
 
       if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
@@ -266,13 +268,17 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 	LayerStopHeight=IceLayerHeight;
       }else{
 	////If this is NOT the last layer then set the stopping height to be the end height of the layer
-	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
+	LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100);
       }
     
       //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
       //cout<<" new layer "<<endl;
       ////Start tracing out the ray as it propagates through the layer
-      for(double i=LayerStartHeight;i>LayerStopHeight-0.01;i=i-0.01){
+      for(double i=LayerStartHeight;i>LayerStopHeight-1;i=i-1){
+
+	if(i<LayerStopHeight){
+	  i=LayerStopHeight;
+	}
 	
 	////Get and Set the A,B,C and L parameters for the layer
 	params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};
@@ -294,13 +300,13 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
 	grAirIce->SetPoint(ipoints,Refracted_x,i);
 	grRefracted->SetPoint(ipoints,Refracted_x,i);
 	grStraight->SetPoint(ipoints,Refracted_x,StraightLine_y);
-	grIceLayer->SetPoint(ipoints,Refracted_x,IceLayerHeight);
-      
+      	grIceLayer->SetPoint(ipoints,Refracted_x,IceLayerHeight);
+	
 	////To make sure that the residual in air is only caculated above the ice surface
 	if(StraightLine_y>=IceLayerHeight){
 	  grResidual->SetPoint(ipoints,Refracted_x,i-StraightLine_y);
 	}
-
+ 
 	//cout<<ipoints<<" "<<Refracted_x<<" "<<i<<" "<<Refracted_x<<" "<<StraightLine_y<<" "<<i-StraightLine_y<<endl;
 	//aout<<ipoints<<" "<<Refracted_x<<" "<<i<<endl;
 
@@ -318,6 +324,8 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       }
       LastRefracted_x=Refracted_x;
     }    
+
+    // cout<<"last ref values are "<<LastRefracted_x<<" "<<LastHeight<<endl;
     
     ////Print out the ray path in ice too  
     struct RayTracingFunctions::fDnfR_params params3a;

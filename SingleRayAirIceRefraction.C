@@ -105,7 +105,7 @@ int main(int argc, char **argv){
       StartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the layer
-      StartHeight=ATMLAY[ilayer+1]/100-0.0001;
+      StartHeight=ATMLAY[ilayer+1]/100;
     }
 
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -216,7 +216,7 @@ int main(int argc, char **argv){
       LayerStartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-      LayerStartHeight=LastHeight-0.00001;
+      LayerStartHeight=LastHeight;
     }
     
     if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
@@ -224,13 +224,17 @@ int main(int argc, char **argv){
       LayerStopHeight=IceLayerHeight;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
-      LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100)-1;
+      LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100);
     }
     
     //std::cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<std::endl;
     //std::cout<<" new layer "<<std::endl;
     ////Start tracing out the ray as it propagates through the layer
-    for(double i=LayerStartHeight;i>LayerStopHeight-0.01;i=i-0.01){
+    for(double i=LayerStartHeight;i>LayerStopHeight-1;i=i-1){
+      
+      if(i<LayerStopHeight){
+	i=LayerStopHeight;
+      }
       
       ////Get and Set the A,B,C and L parameters for the layer
       params2a = {RayTracingFunctions::A_air, RayTracingFunctions::GetB_air(-i), RayTracingFunctions::GetC_air(-i), layerLs[il]};

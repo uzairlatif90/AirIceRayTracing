@@ -270,7 +270,7 @@ double RayTracingFunctions::Refl_P(double thetai, double IceLayerHeight){
 double RayTracingFunctions::FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance)
 {
   int status;
-  int iter = 0, max_iter = 100;
+  int iter = 0, max_iter = 10;
   //const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
@@ -324,14 +324,17 @@ double RayTracingFunctions::fdxdz(double x,void *params){
   double Z1 = p->z1;
   int AirOrIce = p->airorice;
 
-  double output=0;
+  double output=0,dumx=0;
   if(AirOrIce==0){
-    output=tan(asin( (RayTracingFunctions::Getnz_ice(Z0)*sin(x))/RayTracingFunctions::Getnz_ice(Z1) ) ) - tan(Lang);
+    dumx=(RayTracingFunctions::Getnz_ice(Z0)*sin(x))/RayTracingFunctions::Getnz_ice(Z1);
   }
-  
   if(AirOrIce==1){
-    output=tan(asin( (RayTracingFunctions::Getnz_air(Z0)*sin(x))/RayTracingFunctions::Getnz_air(Z1) ) ) - tan(Lang);
+    dumx=(RayTracingFunctions::Getnz_air(Z1)*sin(x))/RayTracingFunctions::Getnz_air(Z0);
   }
+  //output=((dumx/sqrt(1-dumx*dumx)) - tan(Lang));
+  //cout<<"output is "<<output<<" "<<x<<endl;
+  output=dumx - sin(Lang);
+  
   return output;
 }
 
@@ -409,8 +412,11 @@ double RayTracingFunctions::GetRayPropagationTime(double A, double RxDepth, doub
 //// AirOrIce variable is used to determine whether we are working in air or ice as that sets the range for the GSL root finder.
 double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth,double TxDepth, double IncidentAng, int AirOrIce){
 
-  double *output=new double[4];
+  //std::cout<<"in new function "<<n_layer1<<" "<<RxDepth<<" "<<TxDepth<<" "<<IncidentAng<<" "<<AirOrIce<<std::endl;
   
+  double *output=new double[4];
+
+  //auto t1a = std::chrono::high_resolution_clock::now();
   //double x0=0;////Starting horizontal point of the ray. Always set at zero
   double x1=0;////Variable to store the horizontal distance that will be traveled by the ray
   
@@ -440,6 +446,9 @@ double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth
     nzTx=Getnz_air(TxDepth);
   }
 
+  // auto t2a = std::chrono::high_resolution_clock::now();
+  // auto t1b = std::chrono::high_resolution_clock::now();
+  
   ////LimitAngle sets a limit on the range to which the GSL minimisation will work. This limit comes from the fact that in fdxdx() you have tan(asin(x)) which goes to infinity at x=1. In our case x=(nz(Z0)*sin(Angle))/nz(Z1) . Solving for Angle gives us our limit.
   double LimitAngle=asin(nzTx/nzRx);
   
@@ -451,19 +460,28 @@ double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth
   struct RayTracingFunctions::fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
   F1.function = &fdxdz;
   F1.params = &params1;
-  ReceiveAngle=RayTracingFunctions::FindFunctionRoot(F1,0*(RayTracingFunctions::pi/180),GSLFnLimit, gsl_root_fsolver_falsepos,0.000000001);
+  //cout<<"limits are "<<RayAngleInside2ndLayer*(RayTracingFunctions::pi/180)<<" "<<GSLFnLimit*(180.0/RayTracingFunctions::pi)<<endl;
+  ReceiveAngle=RayTracingFunctions::FindFunctionRoot(F1,0.0*(RayTracingFunctions::pi/180),GSLFnLimit, gsl_root_fsolver_brent,0.00000001);
   //std::cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/RayTracingFunctions::pi)<<" deg"<<std::endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution
   Lvalue=nzRx*sin(ReceiveAngle);
 
+  // auto t2b = std::chrono::high_resolution_clock::now();
+  // auto t1c = std::chrono::high_resolution_clock::now();
+  
   x1=GetRayOpticalPath(A, RxDepth, TxDepth, Lvalue, AirOrIce);
   //std::cout<<"The hit point horizontal distance is from the Rx target "<<x1<<" m  on the surface"<<std::endl;
+
+  // auto t2c = std::chrono::high_resolution_clock::now();
+  // auto t1d = std::chrono::high_resolution_clock::now();
   
   ////calculate the propagation time in 2ndLayer 
   RayTimeIn2ndLayer=GetRayPropagationTime(A, RxDepth, TxDepth, Lvalue, AirOrIce);
   //std::cout<<"The propagation time in 2ndLayer is: "<<RayTimeIn2ndLayer<<" s"<<std::endl;
 
+  //auto t2d = std::chrono::high_resolution_clock::now();
+  
   ///////calculate the initial angle when the ray enters the 2ndLayer. This should be the same as RayAngleInside2ndLayer. This provides a good sanity check to make sure things have worked out.
   // gsl_function F4;
   // double result, abserr;
@@ -479,6 +497,16 @@ double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth
   // }
   //std::cout<<"AngleOfEntryIn2ndLayer= "<<AngleOfEntryIn2ndLayer<<" ,RayAngleInside2ndLayer="<<RayAngleInside2ndLayer*(180/RayTracingFunctions::pi)<<std::endl;
 
+  // auto durationa = std::chrono::duration_cast<std::chrono::nanoseconds>( t2a - t1a ).count();
+  // auto durationb = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b - t1b ).count();
+  // auto durationc = std::chrono::duration_cast<std::chrono::nanoseconds>( t2c - t1c ).count();
+  // auto durationd = std::chrono::duration_cast<std::chrono::nanoseconds>( t2d - t1d ).count();
+
+  // std::cout<<"total time taken by the script to do a: "<<durationa<<" ns"<<std::endl;
+  // std::cout<<"total time taken by the script to do b: "<<durationb<<" ns"<<std::endl;
+  // std::cout<<"total time taken by the script to do c: "<<durationc<<" ns"<<std::endl;
+  // std::cout<<"total time taken by the script to do d: "<<durationd<<" ns"<<std::endl;  
+  
   output[0]=x1;
   output[1]=ReceiveAngle*(180/RayTracingFunctions::pi);
   output[2]=Lvalue;
@@ -502,11 +530,12 @@ std::vector<double> RayTracingFunctions::flatten(const std::vector<std::vector<d
 ////Get Propogation parameters for ray propagating in air
 double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double AirTxHeight, double IceLayerHeight){
   double *output=new double[4*MaxLayers+1];
-  
+
+  //auto t1a = std::chrono::high_resolution_clock::now();  
   ////Find out how many atmosphere layers are above the source or Tx which we do not need
   int skiplayer=0;
   for(int ilayer=MaxLayers;ilayer>-1;ilayer--){
-    if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>ATMLAY[ilayer-1]/100){
+    if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>=ATMLAY[ilayer-1]/100){
       //cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
       ilayer=-100;
     }
@@ -520,7 +549,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
   ////Find out how many atmosphere layers are below the ice height which we do not need
   skiplayer=0;
   for(int ilayer=0;ilayer<MaxLayers;ilayer++){
-    if(IceLayerHeight>ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
+    if(IceLayerHeight>=ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
       //cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
       ilayer=100;
     }
@@ -529,6 +558,9 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     }
   }
   int SkipLayersBelow=skiplayer;
+
+  //auto t2a = std::chrono::high_resolution_clock::now();
+  //auto t1b = std::chrono::high_resolution_clock::now();  
   
   double StartAngle=0;
   double StartHeight=0;
@@ -568,20 +600,27 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     if(ilayer==MaxLayers-SkipLayersAbove-1){
       StartAngle=180-LaunchAngleAir;
     }
-    //cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<endl;
+    //std::cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A_air<<" ,B="<<B_air[ilayer]<<" ,C="<<C_air[ilayer]<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<" , UserLaunchAngle "<<LaunchAngleAir<<std::endl;
     
     ////Get the hit parameters from the function. The output is:
     //// How much horizontal distance did the ray travel in the layer
     //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
     //// The value of the L parameter for that layer
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==MaxLayers-SkipLayersAbove-1){ 
+      //auto t1c = std::chrono::high_resolution_clock::now();  
+      //cout<<"in layer "<<ilayer<<endl;
       double* GetHitPar=RayTracingFunctions::GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
+      //auto t2c = std::chrono::high_resolution_clock::now();
+      
       TotalHorizontalDistance.push_back(GetHitPar[0]);
       ReceiveAngle.push_back(GetHitPar[1]);
       Lvalue.push_back(GetHitPar[2]);
       PropagationTime.push_back(GetHitPar[3]);
       StartAngle=GetHitPar[1];
-      delete []GetHitPar;  
+      delete []GetHitPar;
+      
+      //auto durationc = std::chrono::duration_cast<std::chrono::nanoseconds>( t2c - t1c ).count();
+      //std::cout<<"total time taken by the script to do c: "<<durationc<<" ns"<<std::endl;
     }
     if(ilayer<MaxLayers-SkipLayersAbove-1){
       Lvalue.push_back(Lvalue[0]);
@@ -600,7 +639,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     ipoints++;
     ////dont forget to delete the pointer!
     
-  }
+  } 
   
   for(int i=0;i<Lvalue.size();i++){
     output[4*i+0]=TotalHorizontalDistance[i];
@@ -609,6 +648,14 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     output[4*i+3]=PropagationTime[i];
   }
   output[4*MaxLayers]=Lvalue.size();
+  //auto t2b = std::chrono::high_resolution_clock::now();
+
+  // auto durationa = std::chrono::duration_cast<std::chrono::nanoseconds>( t2a - t1a ).count();
+  // auto durationb = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b - t1b ).count();
+  
+  // std::cout<<"total time taken by the script to do a: "<<durationa<<" ns"<<std::endl;
+  // std::cout<<"total time taken by the script to do b: "<<durationb<<" ns"<<std::endl;
+
   return output;
 }
 
@@ -636,32 +683,51 @@ double * RayTracingFunctions::GetIcePropagationPar(double IncidentAngleonIce, do
 
 ////This function will be minimised to get the launch angle in air. It looks at the total horizontal distance and tries to find a ray in air and ice which can cover that horizontal distance perfectly. It takes into account the discontinuity in refractive index at the air ice boundary
 double RayTracingFunctions::MinimizeforLaunchAngle(double x, void *params){
-  
+
   struct RayTracingFunctions::MinforLAng_params *p= (struct RayTracingFunctions::MinforLAng_params *) params;
   double AirTxHeight = p->airtxheight;
   double IceLayerHeight = p->icelayerheight;
   double AntennaDepth = p->antennadepth;
   double HorizontalDistance = p->horizontaldistance;
-  //std::cout<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" "<<HorizontalDistance<<std::endl;
+  //std::cout<<"values are "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" "<<HorizontalDistance<<std::endl;
 
-  double * GetResultsAir=GetAirPropagationPar(x,AirTxHeight,IceLayerHeight);
+  //auto t1a = std::chrono::high_resolution_clock::now();
+  
   double TotalHorizontalDistanceinAir=0;
+  double IncidentAngleonIce=0;
+  double Lvalue=0;  
+  double * GetResultsAir=GetAirPropagationPar(x,AirTxHeight,IceLayerHeight);
+  TotalHorizontalDistanceinAir=0;
   int FilledLayers=GetResultsAir[4*MaxLayers];
   for(int i=0;i<FilledLayers;i++){
     TotalHorizontalDistanceinAir+=GetResultsAir[i*4];
   }
-  double IncidentAngleonIce=GetResultsAir[1+(FilledLayers-1)*4];
-  double Lvalue=GetResultsAir[2];
+  IncidentAngleonIce=GetResultsAir[1+(FilledLayers-1)*4];
+  Lvalue=GetResultsAir[2];
   delete [] GetResultsAir;
 
-  double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth, Lvalue);
-  double TotalHorizontalDistanceinIce=GetResultsIce[0];
-  delete [] GetResultsIce;
+  // auto t2a = std::chrono::high_resolution_clock::now();
+  // auto t1b = std::chrono::high_resolution_clock::now();
+  
+  double TotalHorizontalDistanceinIce=0;
+  if(AntennaDepth!=0){
+    double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth, Lvalue);
+    TotalHorizontalDistanceinIce=GetResultsIce[0];
+    delete [] GetResultsIce;
+  }else{
+    TotalHorizontalDistanceinIce=0;
+  }
+  //std::cout<<TotalHorizontalDistanceinIce<<" "<<TotalHorizontalDistanceinAir<<" "<< HorizontalDistance<<std::endl;
+  double checkmin=(HorizontalDistance-(TotalHorizontalDistanceinIce + TotalHorizontalDistanceinAir) );
 
-  double checkmin=((TotalHorizontalDistanceinIce + TotalHorizontalDistanceinAir) - HorizontalDistance);
+  // auto t2b = std::chrono::high_resolution_clock::now();
+  // auto durationa = std::chrono::duration_cast<std::chrono::nanoseconds>( t2a - t1a ).count();
+  // auto durationb = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b - t1b ).count();
+  
+  // std::cout<<"total time taken by the script to do a: "<<durationa<<" ns"<<std::endl;
+  // std::cout<<"total time taken by the script to do b: "<<durationb<<" ns"<<std::endl;
   
   return checkmin;
-  
 }
 
 ///This function loads in the GDAS atmosphere file. It calls the other functions to load in the tabulated refractive index values and the sea level refractive index value from the file. It also reads the mass overburden A,B and C values from the file

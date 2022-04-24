@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <vector>
 #include <cstdlib>
+#include <chrono>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
