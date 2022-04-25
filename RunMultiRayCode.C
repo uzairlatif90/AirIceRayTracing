@@ -25,7 +25,7 @@ void RunMultiRayCode(){
     CheckSol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(AirTxHeight*100, HorizontalDistance*100 ,AntennaDepth*100, IceLayerHeight*100,0,opticalPathLengthInIce, opticalPathLengthInAir, launchAngle, horidist2interpnt,reflectionCoefficientS,reflectionCoefficientP);
   }else{
     
-    MultiRayAirIceRefraction::MakeAtmosphere();
+    RayTracingFunctions::MakeAtmosphere();
     CheckSol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(AirTxHeight*100, HorizontalDistance*100 ,AntennaDepth*100, IceLayerHeight*100,opticalPathLengthInIce, opticalPathLengthInAir, launchAngle, horidist2interpnt,reflectionCoefficientS,reflectionCoefficientP);
     
   }
