@@ -25,6 +25,26 @@ namespace RayTracingFunctions{
   //static constexpr double pi=4.0*atan(1.0); /**< Gives back value of Pi */
   static constexpr double pi=3.1415927; /**< Gives back value of Pi */
   static constexpr double spedc=299792458.0; /**< Speed of Light in m/s */
+
+  ////Define std::vectors to store data from the file
+  static std::vector <std::vector <double>> nh_data;////n(h) refractive index profile of the atmosphere as a function of height
+  static std::vector <std::vector <double>> lognh_data;////log(n(h)-1) log of the refractive index profile of the atmosphere as a function of height subtracted by 1
+  static std::vector <std::vector <double>> h_data;////height data
+
+  ////Define Arrays for storing values of ATMLAY and a,b and c parameters taken from the Atmosphere.dat file
+  static double ATMLAY[5];
+  static double abc[5][3];
+
+  ////define dummy variables which will be filled in later after fitting
+  static double C_air[5];
+  static double B_air[5];
+
+  ////define variables which are going to be used by GSL for linear interpolation
+  gsl_interp_accel * accelerator;
+  gsl_spline *spline;
+
+  ////The variable which will store the max layers available in an atmosphere model
+  static int MaxLayers=0;
   
   ////This Function reads in the values of ATMLAY and a,b and c parameters taken from the GDAS Atmosphere.dat file. The a,b and c values are mass overburden values and are not required in this code.
   int readATMpar();

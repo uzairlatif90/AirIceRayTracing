@@ -1,25 +1,5 @@
 #include "RayTracingFunctions.h"
 
-////Define std::vectors to store data from the file
-std::vector <std::vector <double>> nh_data;////n(h) refractive index profile of the atmosphere as a function of height
-std::vector <std::vector <double>> lognh_data;////log(n(h)-1) log of the refractive index profile of the atmosphere as a function of height subtracted by 1
-std::vector <std::vector <double>> h_data;////height data
-
-////Define Arrays for storing values of ATMLAY and a,b and c parameters taken from the Atmosphere.dat file
-double ATMLAY[5];
-double abc[5][3];
-
-////define dummy variables which will be filled in later after fitting
-double C_air[5];
-double B_air[5];
-
-////define variables which are going to be used by GSL for linear interpolation
-gsl_interp_accel * accelerator;
-gsl_spline *spline;
-
-////The variable which will store the max layers available in an atmosphere model
-int MaxLayers=0;
-
 ////This Function reads in the values of ATMLAY and a,b and c parameters taken from the Atmosphere.dat file. The a,b and c values are mass overburden values and are not required in this code.
 int RayTracingFunctions::readATMpar(){
   
@@ -42,16 +22,16 @@ int RayTracingFunctions::readATMpar(){
 
       ////Store the values in their respective arrays
       if(n1==0){
-	for (int i=0; i<5; i++){ ATMLAY[i]=dummya[i]; }
+	for (int i=0; i<5; i++){ RayTracingFunctions::ATMLAY[i]=dummya[i]; }
       }    
       if(n1==1){
-	for (int i=0; i<5; i++){ abc[i][0]=dummya[i]; }
+	for (int i=0; i<5; i++){ RayTracingFunctions::abc[i][0]=dummya[i]; }
       }
       if(n1==2){
-	for (int i=0; i<5; i++){ abc[i][1]=dummya[i]; }
+	for (int i=0; i<5; i++){ RayTracingFunctions::abc[i][1]=dummya[i]; }
       }
       if(n1==3){
-	for (int i=0; i<5; i++){ abc[i][2]=dummya[i]; }
+	for (int i=0; i<5; i++){ RayTracingFunctions::abc[i][2]=dummya[i]; }
       }
       n1++;
     }////end the while loop
@@ -59,18 +39,18 @@ int RayTracingFunctions::readATMpar(){
     ain.close();
   }////if condition to check if file is open
 
-  abc[4][0]=abc[3][0];
-  abc[4][1]=abc[3][1];
-  abc[4][2]=abc[3][2];
+  RayTracingFunctions::abc[4][0]=RayTracingFunctions::abc[3][0];
+  RayTracingFunctions::abc[4][1]=RayTracingFunctions::abc[3][1];
+  RayTracingFunctions::abc[4][2]=RayTracingFunctions::abc[3][2];
   
   return 0;
 }
 
 int RayTracingFunctions::readnhFromFile(){
 
-  nh_data.clear();
-  lognh_data.clear();
-  h_data.clear();
+  RayTracingFunctions::nh_data.clear();
+  RayTracingFunctions::lognh_data.clear();
+  RayTracingFunctions::h_data.clear();
   
   ////Open the file
   std::ifstream ain("Atmosphere.dat");
@@ -99,11 +79,11 @@ int RayTracingFunctions::readnhFromFile(){
 	temp2.push_back(dummy2);
 	temp3.push_back(log(dummy2-1));
 	
-	if(dummy1*100>=ATMLAY[layer]){////change the layer once the data of all the heights of that layer has been read in
+	if(dummy1*100>=RayTracingFunctions::ATMLAY[layer]){////change the layer once the data of all the heights of that layer has been read in
 	  if(layer>0){////now since the layer has finished and the temporary vectors have been filled in. Now we push the vectors in the main 2d height and refractice index vectors
-	    h_data.push_back(temp1);
-	    nh_data.push_back(temp2);
-	    lognh_data.push_back(temp3);
+	    RayTracingFunctions::h_data.push_back(temp1);
+	    RayTracingFunctions::nh_data.push_back(temp2);
+	    RayTracingFunctions::lognh_data.push_back(temp3);
 
 	    ////clear the vectors now for storing the next layer
 	    temp1.clear();
@@ -117,9 +97,9 @@ int RayTracingFunctions::readnhFromFile(){
     }////end the while loop
     
     if(layer>0){////For storing the last layer
-      h_data.push_back(temp1);
-      nh_data.push_back(temp2);
-      lognh_data.push_back(temp3);
+      RayTracingFunctions::h_data.push_back(temp1);
+      RayTracingFunctions::nh_data.push_back(temp2);
+      RayTracingFunctions::lognh_data.push_back(temp3);
       ////clear the vectors now for storing the next layer
       temp1.clear();
       temp2.clear();
@@ -131,11 +111,11 @@ int RayTracingFunctions::readnhFromFile(){
   }////if condition to check if file is open
 
   ////The file reading condition "while (getline(ain,line))" reads the last the datapoint of the file twice. This is to to remove the last repeat data point in all the data arrays
-  h_data[h_data.size()-1].erase(h_data[h_data.size()-1].end() - 1);
-  nh_data[nh_data.size()-1].erase(nh_data[nh_data.size()-1].end() - 1);
-  lognh_data[lognh_data.size()-1].erase(lognh_data[lognh_data.size()-1].end() - 1);
+  RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1].erase(RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1].end() - 1);
+  RayTracingFunctions::nh_data[RayTracingFunctions::nh_data.size()-1].erase(RayTracingFunctions::nh_data[RayTracingFunctions::nh_data.size()-1].end() - 1);
+  RayTracingFunctions::lognh_data[RayTracingFunctions::lognh_data.size()-1].erase(RayTracingFunctions::lognh_data[RayTracingFunctions::lognh_data.size()-1].end() - 1);
 
-  MaxLayers=h_data.size()+1;////store the total number of layers present in the data
+  RayTracingFunctions::MaxLayers=RayTracingFunctions::h_data.size()+1;////store the total number of layers present in the data
   
   return 0;
 }
@@ -168,16 +148,20 @@ int RayTracingFunctions::FillInAirRefractiveIndex(){
   
   double N0=0;
   for(int ilayer=0;ilayer<5;ilayer++){
-    double hlow=ATMLAY[ilayer]/100;
-    C_air[ilayer]=1.0/(abc[ilayer][2]/100);
+    double hlow=RayTracingFunctions::ATMLAY[ilayer]/100;
+    RayTracingFunctions::C_air[ilayer]=1.0/(RayTracingFunctions::abc[ilayer][2]/100);
     if(ilayer>0){
-      N0=A_air+B_air[ilayer-1]*exp(-hlow*C_air[ilayer-1]);
+      N0=RayTracingFunctions::A_air+RayTracingFunctions::B_air[ilayer-1]*exp(-hlow*RayTracingFunctions::C_air[ilayer-1]);
     }
     if(ilayer==0){
       N0=gsl_spline_eval(spline, 0, accelerator);
     }
-    B_air[ilayer]=((N0-1)/exp(-hlow*C_air[ilayer]));
+    RayTracingFunctions::B_air[ilayer]=((N0-1)/exp(-hlow*RayTracingFunctions::C_air[ilayer]));
   }
+
+  // for(int ilayer=0;ilayer<5;ilayer++){
+  //   cout<<A_air<<" "<<B_air[ilayer]<<" "<<C_air[ilayer]<<endl;
+  // }
 
   return 0;   
 }
@@ -188,18 +172,18 @@ double RayTracingFunctions::GetB_air(double z){
   double B=0;
   int whichlayer=0;
  
-  for(int ilayer=0;ilayer<MaxLayers-1;ilayer++){
+  for(int ilayer=0;ilayer<RayTracingFunctions::MaxLayers-1;ilayer++){
 
-    if(zabs<ATMLAY[ilayer+1]/100 && zabs>=ATMLAY[ilayer]/100){
+    if(zabs<RayTracingFunctions::ATMLAY[ilayer+1]/100 && zabs>=RayTracingFunctions::ATMLAY[ilayer]/100){
       whichlayer=ilayer;
       ilayer=100;
     }  
   }
-  if(zabs>=ATMLAY[MaxLayers-1]/100){
-    whichlayer=MaxLayers-1;
+  if(zabs>=RayTracingFunctions::ATMLAY[RayTracingFunctions::MaxLayers-1]/100){
+    whichlayer=RayTracingFunctions::MaxLayers-1;
   }
  
-  B=B_air[whichlayer];
+  B=RayTracingFunctions::B_air[whichlayer];
   //B=1e-9;
   return B;
 }
@@ -210,17 +194,17 @@ double RayTracingFunctions::GetC_air(double z){
   double C=0;
   int whichlayer=0;
   
-  for(int ilayer=0;ilayer<MaxLayers-1;ilayer++){
-    if(zabs<ATMLAY[ilayer+1]/100 && zabs>=ATMLAY[ilayer]/100){
+  for(int ilayer=0;ilayer<RayTracingFunctions::MaxLayers-1;ilayer++){
+    if(zabs<RayTracingFunctions::ATMLAY[ilayer+1]/100 && zabs>=RayTracingFunctions::ATMLAY[ilayer]/100){
       whichlayer=ilayer;
       ilayer=100;
     }
   }
   
-  if(zabs>=ATMLAY[MaxLayers-1]/100){
-    whichlayer=MaxLayers-1;
+  if(zabs>=RayTracingFunctions::ATMLAY[RayTracingFunctions::MaxLayers-1]/100){
+    whichlayer=RayTracingFunctions::MaxLayers-1;
   }
-  C=C_air[whichlayer];
+  C=RayTracingFunctions::C_air[whichlayer];
   //C=1e-9;
   return C;
 }
@@ -270,7 +254,7 @@ double RayTracingFunctions::Refl_P(double thetai, double IceLayerHeight){
 double RayTracingFunctions::FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance)
 {
   int status;
-  int iter = 0, max_iter = 10;
+  int iter = 0, max_iter = 20;
   //const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
@@ -329,7 +313,7 @@ double RayTracingFunctions::fdxdz(double x,void *params){
     dumx=(RayTracingFunctions::Getnz_ice(Z0)*sin(x))/RayTracingFunctions::Getnz_ice(Z1);
   }
   if(AirOrIce==1){
-    dumx=(RayTracingFunctions::Getnz_air(Z1)*sin(x))/RayTracingFunctions::Getnz_air(Z0);
+    dumx=(RayTracingFunctions::Getnz_air(Z0)*sin(x))/RayTracingFunctions::Getnz_air(Z1);
   }
   //output=((dumx/sqrt(1-dumx*dumx)) - tan(Lang));
   //cout<<"output is "<<output<<" "<<x<<endl;
@@ -366,15 +350,15 @@ double RayTracingFunctions::GetRayOpticalPath(double A, double RxDepth, double T
   struct RayTracingFunctions::fDnfR_params params2b;
   if(AirOrIce==0){
     //std::cout<<"in ice"<<std::endl;
-    params2a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), Lvalue};
-    params2b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), Lvalue};
+    params2a = {A, RayTracingFunctions::GetB_ice(RxDepth), -RayTracingFunctions::GetC_ice(RxDepth), Lvalue};
+    params2b = {A, RayTracingFunctions::GetB_ice(TxDepth), -RayTracingFunctions::GetC_ice(TxDepth), Lvalue};
   }
   if(AirOrIce==1){
     //std::cout<<"in air"<<std::endl;
-    params2a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), Lvalue};
-    params2b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), Lvalue};
+    params2a = {A, RayTracingFunctions::GetB_air(RxDepth), -RayTracingFunctions::GetC_air(RxDepth), Lvalue};
+    params2b = {A, RayTracingFunctions::GetB_air(TxDepth), -RayTracingFunctions::GetC_air(TxDepth), Lvalue};
   }
-  double x1=+fDnfR(RxDepth,&params2a)-fDnfR(TxDepth,&params2b);
+  double x1=+RayTracingFunctions::fDnfR(RxDepth,&params2a)-RayTracingFunctions::fDnfR(TxDepth,&params2b);
   if(AirOrIce==1){
     x1*=-1;
   }
@@ -388,15 +372,15 @@ double RayTracingFunctions::GetRayPropagationTime(double A, double RxDepth, doub
   struct RayTracingFunctions::ftimeD_params params3b;
   if(AirOrIce==0){
     //std::cout<<"in ice"<<std::endl;
-    params3a = {A, GetB_ice(RxDepth), -GetC_ice(RxDepth), RayTracingFunctions::spedc, Lvalue,0};
-    params3b = {A, GetB_ice(TxDepth), -GetC_ice(TxDepth), RayTracingFunctions::spedc, Lvalue,0};
+    params3a = {A, RayTracingFunctions::GetB_ice(RxDepth), -RayTracingFunctions::GetC_ice(RxDepth), RayTracingFunctions::spedc, Lvalue,0};
+    params3b = {A, RayTracingFunctions::GetB_ice(TxDepth), -RayTracingFunctions::GetC_ice(TxDepth), RayTracingFunctions::spedc, Lvalue,0};
   }
   if(AirOrIce==1){
     //std::cout<<"in air"<<std::endl;
-    params3a = {A, GetB_air(RxDepth), -GetC_air(RxDepth), RayTracingFunctions::spedc, Lvalue,1};
-    params3b = {A, GetB_air(TxDepth), -GetC_air(TxDepth), RayTracingFunctions::spedc, Lvalue,1};
+    params3a = {A, RayTracingFunctions::GetB_air(RxDepth), -RayTracingFunctions::GetC_air(RxDepth), RayTracingFunctions::spedc, Lvalue,1};
+    params3b = {A, RayTracingFunctions::GetB_air(TxDepth), -RayTracingFunctions::GetC_air(TxDepth), RayTracingFunctions::spedc, Lvalue,1};
   }
-  double RayTimeIn2ndLayer=+ftimeD(RxDepth,&params3a)-ftimeD(TxDepth,&params3b);
+  double RayTimeIn2ndLayer=+RayTracingFunctions::ftimeD(RxDepth,&params3a)-RayTracingFunctions::ftimeD(TxDepth,&params3b);
   if(AirOrIce==1){
     RayTimeIn2ndLayer*=-1;
   }
@@ -529,13 +513,13 @@ std::vector<double> RayTracingFunctions::flatten(const std::vector<std::vector<d
 
 ////Get Propogation parameters for ray propagating in air
 double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double AirTxHeight, double IceLayerHeight){
-  double *output=new double[4*MaxLayers+1];
+  double *output=new double[4*RayTracingFunctions::MaxLayers+1];
 
   //auto t1a = std::chrono::high_resolution_clock::now();  
   ////Find out how many atmosphere layers are above the source or Tx which we do not need
   int skiplayer=0;
-  for(int ilayer=MaxLayers;ilayer>-1;ilayer--){
-    if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>=ATMLAY[ilayer-1]/100){
+  for(int ilayer=RayTracingFunctions::MaxLayers;ilayer>-1;ilayer--){
+    if(AirTxHeight<RayTracingFunctions::ATMLAY[ilayer]/100 && AirTxHeight>=RayTracingFunctions::ATMLAY[ilayer-1]/100){
       //cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
       ilayer=-100;
     }
@@ -548,12 +532,12 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
   
   ////Find out how many atmosphere layers are below the ice height which we do not need
   skiplayer=0;
-  for(int ilayer=0;ilayer<MaxLayers;ilayer++){
-    if(IceLayerHeight>=ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
+  for(int ilayer=0;ilayer<RayTracingFunctions::MaxLayers;ilayer++){
+    if(IceLayerHeight>=RayTracingFunctions::ATMLAY[ilayer]/100 && IceLayerHeight<RayTracingFunctions::ATMLAY[ilayer+1]/100){
       //cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
       ilayer=100;
     }
-    if(ilayer<MaxLayers){
+    if(ilayer<RayTracingFunctions::MaxLayers){
       skiplayer++;
     }
   }
@@ -572,16 +556,16 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
   std::vector <double> Lvalue;
   std::vector <double> PropagationTime;
 
-  int ipoints=0;
-  for(int ilayer=MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
+  //int ipoints=0;
+  for(int ilayer=RayTracingFunctions::MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
     
     ////Set the starting height of the ray for propogation for that layer
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       ////If this is the first layer then set the start height to be the height of the source
       StartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the layer
-      StartHeight=ATMLAY[ilayer+1]/100-0.00001;
+      StartHeight=RayTracingFunctions::ATMLAY[ilayer+1]/100-0.00001;
     }
     
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
@@ -593,11 +577,11 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
       StopHeight=IceLayerHeight;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
-      StopHeight=ATMLAY[ilayer]/100;
+      StopHeight=RayTracingFunctions::ATMLAY[ilayer]/100;
     }
     
     ////If this is the first layer then set the initial launch angle of the ray through the layers
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       StartAngle=180-LaunchAngleAir;
     }
     //std::cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A_air<<" ,B="<<B_air[ilayer]<<" ,C="<<C_air[ilayer]<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<" , UserLaunchAngle "<<LaunchAngleAir<<std::endl;
@@ -606,7 +590,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     //// How much horizontal distance did the ray travel in the layer
     //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
     //// The value of the L parameter for that layer
-    if(ilayer==MaxLayers-SkipLayersAbove-1){ 
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){ 
       //auto t1c = std::chrono::high_resolution_clock::now();  
       //cout<<"in layer "<<ilayer<<endl;
       double* GetHitPar=RayTracingFunctions::GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
@@ -622,7 +606,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
       //auto durationc = std::chrono::duration_cast<std::chrono::nanoseconds>( t2c - t1c ).count();
       //std::cout<<"total time taken by the script to do c: "<<durationc<<" ns"<<std::endl;
     }
-    if(ilayer<MaxLayers-SkipLayersAbove-1){
+    if(ilayer<RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       Lvalue.push_back(Lvalue[0]);
       double nzStopHeight=Getnz_air(StopHeight);
       double RecAng=asin(Lvalue[0]/nzStopHeight);
@@ -636,7 +620,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     }
     //cout<<ilayer<<" "<<TotalHorizontalDistance[ipoints]<<" "<<ReceiveAngle[ipoints]<<" "<<Lvalue[ipoints]<<" "<<PropagationTime[ipoints]<<endl;
     
-    ipoints++;
+    //ipoints++;
     ////dont forget to delete the pointer!
     
   } 
@@ -647,7 +631,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     output[4*i+2]=Lvalue[i];
     output[4*i+3]=PropagationTime[i];
   }
-  output[4*MaxLayers]=Lvalue.size();
+  output[4*RayTracingFunctions::MaxLayers]=Lvalue.size();
   //auto t2b = std::chrono::high_resolution_clock::now();
 
   // auto durationa = std::chrono::duration_cast<std::chrono::nanoseconds>( t2a - t1a ).count();
@@ -698,7 +682,7 @@ double RayTracingFunctions::MinimizeforLaunchAngle(double x, void *params){
   double Lvalue=0;  
   double * GetResultsAir=GetAirPropagationPar(x,AirTxHeight,IceLayerHeight);
   TotalHorizontalDistanceinAir=0;
-  int FilledLayers=GetResultsAir[4*MaxLayers];
+  int FilledLayers=GetResultsAir[4*RayTracingFunctions::MaxLayers];
   for(int i=0;i<FilledLayers;i++){
     TotalHorizontalDistanceinAir+=GetResultsAir[i*4];
   }
@@ -717,6 +701,7 @@ double RayTracingFunctions::MinimizeforLaunchAngle(double x, void *params){
   }else{
     TotalHorizontalDistanceinIce=0;
   }
+
   //std::cout<<TotalHorizontalDistanceinIce<<" "<<TotalHorizontalDistanceinAir<<" "<< HorizontalDistance<<std::endl;
   double checkmin=(HorizontalDistance-(TotalHorizontalDistanceinIce + TotalHorizontalDistanceinAir) );
 
@@ -734,19 +719,19 @@ double RayTracingFunctions::MinimizeforLaunchAngle(double x, void *params){
 int RayTracingFunctions::MakeAtmosphere(){
    
   ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
-  readATMpar();
-  readnhFromFile();
+  RayTracingFunctions::readATMpar();
+  RayTracingFunctions::readnhFromFile();
   
   ////Flatten out the height and the refractive index std::vectors to be used for setting the up the spline interpolation.
-  std::vector <double> flattened_h_data=flatten(h_data);
-  std::vector <double> flattened_nh_data=flatten(nh_data);
+  std::vector <double> flattened_h_data=flatten(RayTracingFunctions::h_data);
+  std::vector <double> flattened_nh_data=flatten(RayTracingFunctions::nh_data);
 
   ////Set up the GSL cubic spline interpolation. This used for interpolating values of refractive index at different heights.
-  accelerator =  gsl_interp_accel_alloc();
-  spline = gsl_spline_alloc (gsl_interp_cspline,flattened_h_data.size());
-  gsl_spline_init(spline, flattened_h_data.data(), flattened_nh_data.data(), flattened_h_data.size());
+  RayTracingFunctions::accelerator =  gsl_interp_accel_alloc();
+  RayTracingFunctions::spline = gsl_spline_alloc (gsl_interp_cspline,flattened_h_data.size());
+  gsl_spline_init(RayTracingFunctions::spline, flattened_h_data.data(), flattened_nh_data.data(), flattened_h_data.size());
  
-  FillInAirRefractiveIndex();
+  RayTracingFunctions::FillInAirRefractiveIndex();
 
   // flattened_h_data.clear();
   // flattened_nh_data.clear();

@@ -12,13 +12,13 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   // double IceLayerHeight=3000;////Height where the ice layer starts off
 
 
-  ////Fill in the n(h) and h arrays and ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
+  ////Fill in the n(h) and h arrays and RayTracingFunctions::ATMLAY and a,b and c (these 3 are the mass overburden parameters) from the data file
   RayTracingFunctions::MakeAtmosphere();
   
-  if(AirTxHeight>h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]){
+  if(AirTxHeight>RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1][RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1].size()-1]){
     ////Maximum height available with the refractive index data
-    cout<<"Tx Height is set higher than maximum available height for atmospheric refractive index which is "<<h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1]<<endl;
-    AirTxHeight=h_data[h_data.size()-1][h_data[h_data.size()-1].size()-1];
+    cout<<"Tx Height is set higher than maximum available height for atmospheric refractive index which is "<<RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1][RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1].size()-1]<<endl;
+    AirTxHeight=RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1][RayTracingFunctions::h_data[RayTracingFunctions::h_data.size()-1].size()-1];
     cout<<"Setting Tx Height to be the maximum available height"<<endl;
   }
 
@@ -36,10 +36,10 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   
   ////Find out how many atmosphere layers are above the source or Tx which we do not need
   int skiplayer=0;
-  for(int ilayer=MaxLayers;ilayer>-1;ilayer--){
-    //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer-1]/100<<endl;
-    if(AirTxHeight<ATMLAY[ilayer]/100 && AirTxHeight>=ATMLAY[ilayer-1]/100){
-      cout<<"Tx Height is in this layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
+  for(int ilayer=RayTracingFunctions::MaxLayers;ilayer>-1;ilayer--){
+    //cout<<ilayer<<" "<<RayTracingFunctions::ATMLAY[ilayer]/100<<" "<<RayTracingFunctions::ATMLAY[ilayer-1]/100<<endl;
+    if(AirTxHeight<RayTracingFunctions::ATMLAY[ilayer]/100 && AirTxHeight>=RayTracingFunctions::ATMLAY[ilayer-1]/100){
+      cout<<"Tx Height is in this layer with a height range of "<<RayTracingFunctions::ATMLAY[ilayer]/100<<" m to "<<RayTracingFunctions::ATMLAY[ilayer-1]/100<<" m and is at a height of "<<AirTxHeight<<" m"<<endl;
       ilayer=-100;
     }
     if(ilayer>-1){
@@ -51,13 +51,13 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
 
   ////Find out how many atmosphere layers are below the ice height which we do not need
   skiplayer=0;
-  for(int ilayer=0;ilayer<MaxLayers;ilayer++){
-    //cout<<ilayer<<" "<<ATMLAY[ilayer]/100<<" "<<ATMLAY[ilayer+1]/100<<endl;
-    if(IceLayerHeight>=ATMLAY[ilayer]/100 && IceLayerHeight<ATMLAY[ilayer+1]/100){
-      cout<<"Ice Layer is in the layer with a height range of "<<ATMLAY[ilayer]/100<<" m to "<<ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
+  for(int ilayer=0;ilayer<RayTracingFunctions::MaxLayers;ilayer++){
+    //cout<<ilayer<<" "<<RayTracingFunctions::ATMLAY[ilayer]/100<<" "<<RayTracingFunctions::ATMLAY[ilayer+1]/100<<endl;
+    if(IceLayerHeight>=RayTracingFunctions::ATMLAY[ilayer]/100 && IceLayerHeight<RayTracingFunctions::ATMLAY[ilayer+1]/100){
+      cout<<"Ice Layer is in the layer with a height range of "<<RayTracingFunctions::ATMLAY[ilayer]/100<<" m to "<<RayTracingFunctions::ATMLAY[ilayer+1]/100<<" m and is at a height of "<<IceLayerHeight<<" m"<<endl;
       ilayer=100;
     }
-    if(ilayer<MaxLayers){
+    if(ilayer<RayTracingFunctions::MaxLayers){
       skiplayer++;
     }
   }
@@ -77,19 +77,19 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   
   ////Start loop over the atmosphere layers and analyticaly propagate the ray through the atmosphere
   cout<<"Fitting the atmosphere refrative index profile with multiple layers and propogate the ray"<<endl;
-  for(int ilayer=MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
+  for(int ilayer=RayTracingFunctions::MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
     
     ////Set the starting height of the ray for propogation for that layer
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       ////If this is the first layer then set the start height to be the height of the source
       StartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the layer
-      StartHeight=ATMLAY[ilayer+1]/100;
+      StartHeight=RayTracingFunctions::ATMLAY[ilayer+1]/100-0.00001;
     }
 
-    ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-    Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
+    ////Since we have the starting height now we can find out the refactive index at that height from data using RayTracingFunctions::spline interpolation
+    Start_nh=gsl_spline_eval(RayTracingFunctions::spline, StartHeight, RayTracingFunctions::accelerator);
 
     ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){
@@ -97,11 +97,11 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
       StopHeight=IceLayerHeight;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
-      StopHeight=ATMLAY[ilayer]/100;
+      StopHeight=RayTracingFunctions::ATMLAY[ilayer]/100;
     }
 
     ////If this is the first layer then set the initial launch angle of the ray through the layers
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       StartAngle=180-RayLaunchAngle;
     }
     //cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<endl;
@@ -110,7 +110,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     //// How much horizontal distance did the ray travel in the layer
     //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
     //// The value of the L parameter for that layer
-    if(ilayer==MaxLayers-SkipLayersAbove-1){
+    if(ilayer==RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       double* GetHitPar=RayTracingFunctions::GetLayerHitPointPar(Start_nh, StopHeight, StartHeight, StartAngle, 1);
       TotalHorizontalDistance+=GetHitPar[0];
       RecieveAngle=GetHitPar[1];
@@ -120,7 +120,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
       layerLs.push_back(GetHitPar[2]);
       delete []GetHitPar;  
     }
-    if(ilayer<MaxLayers-SkipLayersAbove-1){
+    if(ilayer<RayTracingFunctions::MaxLayers-SkipLayersAbove-1){
       double nzStopHeight=RayTracingFunctions::Getnz_air(StopHeight);
       double RecAng=asin(Lvalue/nzStopHeight);
       RecAng=RecAng*(180/RayTracingFunctions::pi);
@@ -190,22 +190,22 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
 
       
   ////Start looping over the layers to trace out the ray
-  for(int il=0;il<MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
+  for(int il=0;il<RayTracingFunctions::MaxLayers-SkipLayersAbove-SkipLayersBelow;il++){
     
     if(il==0){
       ////If this is the first layer then set the start height to be the height of the source
       LayerStartHeight=AirTxHeight;
     }else{
       ////If this is any layer after the first layer then set the start height to be the starting height of the next layer or the end height of the previous layer
-      LayerStartHeight=LastHeight;
+      LayerStartHeight=LastHeight-0.00001;
     }
 
-    if(il==MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
+    if(il==RayTracingFunctions::MaxLayers-SkipLayersAbove-SkipLayersBelow-1){
       ////If this is the last layer then set the stopping height to be the height of the ice layer
       LayerStopHeight=IceLayerHeight;
     }else{
       ////If this is NOT the last layer then set the stopping height to be the end height of the layer
-      LayerStopHeight=(ATMLAY[MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100);
+      LayerStopHeight=(RayTracingFunctions::ATMLAY[RayTracingFunctions::MaxLayers-SkipLayersAbove-SkipLayersBelow-il-1]/100);
     }
     
     //cout<<il<<" A="<<layerAs[il]<<" ,B="<<layerBs[il]<<" ,C="<<layerCs[il]<<" ,L="<<layerLs[il]<<" , StartHeight="<<StartHeight<<" ,StopHeight="<<StopHeight<<" ,LayerStartHeight="<<LayerStartHeight<<" ,LayerStopHeight="<<LayerStopHeight<<endl;
@@ -314,7 +314,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
   mgB->Draw("ALP");
 
   // delete accelerator;
-  // delete spline;
+  // delete RayTracingFunctions::spline;
   // flattened_h_data.clear();
   // flattened_nh_data.clear();
 
