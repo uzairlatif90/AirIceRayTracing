@@ -21,6 +21,24 @@
 
 namespace MultiRayAirIceRefraction{
 
+  /********Stuff for Interpolation**********/
+  static vector <double> GridPositionH;
+  static vector <double> GridPositionTh;
+  static vector <double> GridZValue[8];
+
+  static double GridStartTh=90.1;
+  static double GridStopTh=179.9;
+  
+  static double GridStepSizeH_O=100;
+  static double GridStepSizeTh_O=0.1;
+  static double GridWidthH=1000;
+  static double GridWidthTh=GridStopTh-GridStartTh;
+
+  static int GridPoints=100;////just set a non-zeronumber for now
+  static int TotalStepsH_O=100;////just set a non-zeronumber for now
+  static int TotalStepsTh_O=100;////just set a non-zeronumber for now
+  static double GridStartH=1000;////just set a non-zeronumber for now
+  static double GridStopH=100000;////just set a non-zeronumber for now  
 
   ////This function uses my raw code to calculate values for CoREAS. Since its directly using the minimiser to calculate launch angles and distances it is slightly slower than its _Table version.  
   bool GetHorizontalDistanceToIntersectionPoint(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary,double IceLayerHeight, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint,  double& reflectionCoefficientS, double& reflectionCoefficientP);
@@ -43,12 +61,21 @@ namespace MultiRayAirIceRefraction{
 
   ////This functions reads in the antenna tables and interpolates (or extrapolates) from the table to provide output value for raytracing
   bool GetHorizontalDistanceToIntersectionPoint_Table(double SrcHeightASL, double HorizontalDistanceToRx ,double RxDepthBelowIceBoundary, double IceLayerHeight, int AntennaNumber, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& reflectionCoefficientS, double& reflectionCoefficientP);
+
+  void Air2IceRayTracing(double AirTxHeight, double HorizontalDistance, double IceLayerHeight,double AntennaDepth, double StraightAngle, double dummy[14]);
+  
+  void MakeTable(double IceLayerHeight,double AntennaDepth);
+
+  double GetInterpolatedValue(double hR, double thR, int rtParameter);
+  
+  
+  void GetRayTracingSolutions(double RayLaunchAngleInAir,double AirTxHeight, double IceLayerHeight, double AntennaDepth, double dummy[16]);
   
   ////This is the main function which will make the RayTracing Table that will be used for interpolation by COREAS
   ////The arguments are:
   ////1. AntennaDepth is depth of antenna in the ice and is given in m and is positive
   ////2. IceLayerHeight is the height in m in a.s.l where the ice layer starts off
   int MakeRayTracingTable(double AntennaDepth, double IceLayerHeight, int AntennaNumber);
-
+  
 }
 #endif

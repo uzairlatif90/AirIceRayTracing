@@ -41,11 +41,12 @@ int main(int argc, char **argv){
   double IceLayerHeight=atof(argv[3]);////Height where the ice layer starts off
   double AntennaDepth=atof(argv[4]);////Depth of antenna in the ice
   
-  // double AirTxHeight=5000;////Height of the source
-  // double HorizontalDistance=1000;////Horizontal distance
-  // double IceLayerHeight=3000;////Height where the ice layer starts off
-  // double AntennaDepth=200;////Depth of antenna in the ice  
-  bool StoreRayPath=true;
+  // // double AirTxHeight=5000;////Height of the source
+  // // double HorizontalDistance=1000;////Horizontal distance
+  // // double IceLayerHeight=3000;////Height where the ice layer starts off
+  // // double AntennaDepth=200;////Depth of antenna in the ice  
+
+  bool StoreRayPath=false;
   
   gsl_function F1;
   struct  RayTracingFunctions::MinforLAng_params params1 = { AirTxHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};
@@ -68,8 +69,9 @@ int main(int argc, char **argv){
       TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
     }
     delete []GetResultsAirTest1;
-    
-    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
+
+    //std::cout<<"startanglelim is "<<startanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
+    if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || startanglelim>180){
       checknan=true;
     }else{
       startanglelim=startanglelim+0.05;
@@ -85,8 +87,9 @@ int main(int argc, char **argv){
       TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
     }
     delete []GetResultsAirTest2;
-    
-    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
+
+    //std::cout<<"endanglelim is "<<endanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
+    if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || endanglelim<90){
       checknan=true;
     }else{
       endanglelim=endanglelim-0.05;

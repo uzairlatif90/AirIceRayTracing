@@ -49,6 +49,7 @@ double IceRayTracing::GetC(double z){
   return C;
 }
 
+
 /* Get the value of refractive index model for a given depth  */
 double IceRayTracing::Getnz(double z){
   z=fabs(z);
@@ -190,7 +191,7 @@ double IceRayTracing::FindFunctionRootFDF(gsl_function_fdf FDF,double x_lo, doub
   T = gsl_root_fdfsolver_newton;
   s = gsl_root_fdfsolver_alloc (T);
   gsl_root_fdfsolver_set (s, &FDF, x);
-  
+
   // printf ("using %s method\n",
   //         gsl_root_fdfsolver_name (s));
 
@@ -226,7 +227,7 @@ double IceRayTracing::FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
   const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
-  
+ 
   T = gsl_root_fsolver_falsepos;
   s = gsl_root_fsolver_alloc (T);
   gsl_set_error_handler_off();
@@ -240,17 +241,19 @@ double IceRayTracing::FindFunctionRoot(gsl_function F,double x_lo, double x_hi)
       x_lo = gsl_root_fsolver_x_lower (s);
       x_hi = gsl_root_fsolver_x_upper (s);
       
+      if(x_lo>x_hi){
+      	swap(x_lo,x_hi);
+      }
       double checkval=(*((F).function))(r,(F).params);
       status = gsl_root_test_residual (checkval,1e-6);
       //status = gsl_root_test_interval (x_lo, x_hi,0, 0.000001);
-
-      //printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
+      
       if (status == GSL_SUCCESS){
 	// printf ("Converged:");
 	// printf ("%5d [%.7f, %.7f] %.7f %.7f\n",iter, x_lo, x_hi,r,x_hi - x_lo);
       }
     }
-  while (status == GSL_CONTINUE && iter < max_iter && x_lo<IceRayTracing::A_ice && x_hi<IceRayTracing::A_ice);
+  while (status == GSL_CONTINUE && iter < max_iter);
 
   //printf ("status = %s\n", gsl_strerror (status));
   gsl_root_fsolver_free (s);
@@ -940,12 +943,12 @@ double *IceRayTracing::GetRefractedRayPar(double z0, double x1 ,double z1, doubl
   if(LowerLimit>UpperLimitL[0]){
     LowerLimit=IceRayTracing::Getnz(z0)*sin((LangR*(IceRayTracing::pi/180.0)));
   }
-  
+
   lvalueRa[0]=IceRayTracing::FindFunctionRoot(F4,LowerLimit,UpperLimitL[0]);
   LangRa[0]=asin(lvalueRa[0]/IceRayTracing::Getnz(z0))*(180.0/IceRayTracing::pi);
   checkzeroRa[0]=(IceRayTracing::fRaa(lvalueRa[0],&params4));
   zmax[0]=IceRayTracing::GetZmax(IceRayTracing::A_ice,lvalueRa[0])+1e-7;
-  
+
   if(fabs(checkzeroRa[0])>0.5){
     lvalueRa[0]=IceRayTracing::FindFunctionRootFDF(F4b,LowerLimit,UpperLimitL[0]);
     LangRa[0]=asin(lvalueRa[0]/IceRayTracing::Getnz(z0))*(180.0/IceRayTracing::pi);
@@ -958,8 +961,8 @@ double *IceRayTracing::GetRefractedRayPar(double z0, double x1 ,double z1, doubl
     LangRa[1]=asin(lvalueRa[1]/IceRayTracing::Getnz(z0))*(180.0/IceRayTracing::pi);
     checkzeroRa[1]=IceRayTracing::fRaa(lvalueRa[1],&params4);
     zmax[1]=IceRayTracing::GetZmax(IceRayTracing::A_ice,lvalueRa[1])+1e-7;
-    
-    if(fabs(checkzeroRa[1])>0.5 || std::isnan(checkzeroRa[1])==true || fabs(lvalueRa[1]-lvalueRa[0])<1e-4 ){
+  
+    if(fabs(checkzeroRa[1])>0.5 || std::isnan(checkzeroRa[1])==true || fabs(lvalueRa[1]-lvalueRa[0])<1e-4 ){  
       lvalueRa[1]=IceRayTracing::FindFunctionRoot(F4,lvalueRa[0]-0.15,lvalueRa[0]-0.023);
       LangRa[1]=asin(lvalueRa[1]/IceRayTracing::Getnz(z0))*(180.0/IceRayTracing::pi);
       checkzeroRa[1]=IceRayTracing::fRaa(lvalueRa[1],&params4);
@@ -967,7 +970,6 @@ double *IceRayTracing::GetRefractedRayPar(double z0, double x1 ,double z1, doubl
     }
 
     if(fabs(checkzeroRa[1])>0.5 || std::isnan(checkzeroRa[1])==true || fabs(lvalueRa[1]-lvalueRa[0])<1e-4 ){
-     
       if(lvalueRa[0]+0.005<UpperLimitL[0]){
 	lvalueRa[1]=IceRayTracing::FindFunctionRoot(F4,lvalueRa[0]+0.005,UpperLimitL[0]);
 	LangRa[1]=asin(lvalueRa[1]/IceRayTracing::Getnz(z0))*(180.0/IceRayTracing::pi);
@@ -1197,9 +1199,9 @@ double *IceRayTracing::GetRefractedRayPar(double z0, double x1 ,double z1, doubl
 }
 
 
-/* This function returns the x and z values for the full Direct ray path in a TGraph and also prints out the ray path in a text file */
-TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,double lvalueD){
-
+/* This function returns the x and z values for the full Direct ray and prints out the ray path in a text file */
+void IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,double lvalueD, vector <double> &x, vector <double> &z){
+  
   /* My raytracer can only work the Tx is below the Rx. If the Tx is higher than the Rx than we need to flip the depths to allow for raytracing and then we will flip them back later at the end */
   bool Flip=false;
   double dsw=z0;
@@ -1211,8 +1213,9 @@ TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,doub
    
   /* Set the name of the text files */
   //ofstream aoutD("DirectRay.txt");
+
   /* Set the step size for plotting */
-  double h=0.1;
+  double h=0.5;
   /* Set the total steps required for looping over the whole ray path */
   int dmax=100000;
   /* Set the values to start the rays from */
@@ -1226,8 +1229,8 @@ TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,doub
   struct IceRayTracing::fDnfR_params params6b;
   struct IceRayTracing::fDnfR_params params6c;
   struct IceRayTracing::fDnfR_params params6d;
+
   
-  TGraph *gr1=new TGraph();
   for(int i=0;i<dmax;i++){
     params6a = {IceRayTracing::A_ice, IceRayTracing::GetB(zn), IceRayTracing::GetC(zn), lvalueD};
     params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), IceRayTracing::GetC(z0), lvalueD};
@@ -1259,13 +1262,15 @@ TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,doub
     
     checknan=IceRayTracing::fDnfR(zn,&params6a);
     if(std::isnan(checknan)==false && Flip==false){
-      gr1->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutD<<npnt<<" "<<xn<<" "<<zn<<endl;;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && Flip==true){
-      gr1->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutD<<npnt<<" "<<x1-xn<<" "<<zn<<endl;;
       npnt++;
     }
@@ -1281,10 +1286,12 @@ TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,doub
   params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), IceRayTracing::GetC(z0), lvalueD};
   xn=IceRayTracing::fDnfR(zn,&params6a)-IceRayTracing::fDnfR(z0,&params6b);  
   if(Flip==true){
-    gr1->SetPoint(npnt,x1-xn,z0);
+    x.push_back(x1-xn);
+    z.push_back(zn);
     //aoutD<<npnt<<" "<<x1-xn<<" "<<zn<<endl;;
   }else{
-    gr1->SetPoint(npnt,xn,z0);
+    x.push_back(xn);
+    z.push_back(zn);
     //aoutD<<npnt<<" "<<xn<<" "<<zn<<endl;;
   }
   
@@ -1295,14 +1302,12 @@ TGraph* IceRayTracing::GetFullDirectRayPath(double z0, double x1, double z1,doub
     z0=z1;
     z1=dsw;
   }
-  
-  return gr1;
 
 }
 
-/* This function returns the x and z values for the full Reflected ray path in a TGraph and also prints out the ray path in a text file */
-TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,double lvalueR){
-
+/* This function returns the x and z values for the full Reflected ray path and prints out the ray path in a text file */
+void IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,double lvalueR, vector <double> &x, vector <double> &z){
+  
   /* My raytracer can only work the Tx is below the Rx. If the Tx is higher than the Rx than we need to flip the depths to allow for raytracing and then we will flip them back later at the end */
   bool Flip=false;
   double dsw=z0;
@@ -1315,7 +1320,7 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
   /* Set the name of the text files */
   //ofstream aoutR("ReflectedRay.txt");
   /* Set the step size for plotting. */
-  double h=0.1;
+  double h=0.5;
   /* Set the total steps required for looping over the whole ray path */
   int dmax=100000;
   /* Set the values to start the rays from */
@@ -1332,7 +1337,6 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
   struct IceRayTracing::fDnfR_params params6d;
 
   /* Map out the 1st part of the reflected ray */
-  TGraph *gr2=new TGraph();
   for(int i=0;i<dmax;i++){
     params6a = {IceRayTracing::A_ice, IceRayTracing::GetB(zn), -IceRayTracing::GetC(zn), lvalueR};
     params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), -IceRayTracing::GetC(z0), lvalueR};
@@ -1376,13 +1380,15 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
  
     checknan=IceRayTracing::fDnfR(-zn,&params6a);
     if(std::isnan(checknan)==false && zn<=0 && Flip==false){
-      gr2->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && zn<=0 && Flip==true){
-      gr2->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -1426,13 +1432,15 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
     
     checknan=IceRayTracing::fDnfR(zn,&params6a);
     if(std::isnan(checknan)==false && Flip==false){
-      gr2->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
       
     if(std::isnan(checknan)==false && Flip==true){
-      gr2->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn); 
       //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -1448,10 +1456,12 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
   params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), IceRayTracing::GetC(z0), lvalueR};
   xn=IceRayTracing::fDnfR(zn,&params6a) -IceRayTracing::fDnfR(z0,&params6b);
   if(Flip==true){
-    gr2->SetPoint(npnt,x1-xn,zn);
+    x.push_back(x1-xn);
+    z.push_back(zn); 
     //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
   }else{
-    gr2->SetPoint(npnt,xn,zn);
+    x.push_back(xn);
+    z.push_back(zn); 
     //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
   }
   
@@ -1462,13 +1472,11 @@ TGraph* IceRayTracing::GetFullReflectedRayPath(double z0, double x1, double z1,d
     z0=z1;
     z1=dsw;
   }
-  
-  return gr2;
 
 }
 
-/* This function returns the x and z values for the full Refracted ray path in a TGraph and also prints out the ray path in a text file */
-TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, double zmax, double lvalueRa, int raynumber){
+/* This function returns the x and z values for the full Refracted ray and prints out the ray path in a text file */
+void IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, double zmax, double lvalueRa, vector <double> &x, vector <double> &z,int raynumber){
 
   /* My raytracer can only work the Tx is below the Rx. If the Tx is higher than the Rx than we need to flip the depths to allow for raytracing and then we will flip them back later at the end */
   bool Flip=false;
@@ -1482,14 +1490,14 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
   /* Set the name of the text files */
   //ofstream aoutRa;
   /* Set the name of the text files */
-  if(raynumber==1){
-    //aoutRa.open("RefractedRay1.txt");
-  }
-  if(raynumber==2){
-    //aoutRa.open("RefractedRay2.txt");
-  }
+  // if(raynumber==1){
+  //   aoutRa.open("RefractedRay1.txt");
+  // }
+  // if(raynumber==2){
+  //   aoutRa.open("RefractedRay2.txt");
+  // }
   /* Set the step size for plotting. */
-  double h=0.1;
+  double h=0.5;
   /* Set the total steps required for looping over the whole ray path */
   int dmax=100000;
   /* Set the values to start the rays from */
@@ -1506,7 +1514,6 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
   struct IceRayTracing::fDnfR_params params6d;
 
   /* Map out the 1st part of the refracted ray */
-  TGraph *gr3=new TGraph();    
   for(int i=0;i<dmax;i++){
     params6a = {IceRayTracing::A_ice, IceRayTracing::GetB(zn), -IceRayTracing::GetC(zn), lvalueRa};
     params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), -IceRayTracing::GetC(z0), lvalueRa};
@@ -1555,13 +1562,15 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
     
     checknan=IceRayTracing::fDnfR(-zn,&params6a);
     if(std::isnan(checknan)==false && zn<=0 && Flip==false){
-      gr3->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutRa<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && zn<=0 && Flip==true){
-      gr3->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutRa<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -1605,13 +1614,15 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
     
     checknan=IceRayTracing::fDnfR(zn,&params6a);
     if(std::isnan(checknan)==false && Flip==false){
-      gr3->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutRa<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && Flip==true){
-      gr3->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutRa<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -1627,10 +1638,12 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
   params6b = {IceRayTracing::A_ice, IceRayTracing::GetB(z0), IceRayTracing::GetC(z0), lvalueRa};  
   xn=IceRayTracing::fDnfR(zn,&params6a)-IceRayTracing::fDnfR(z0,&params6b);
   if(Flip==true){
-    gr3->SetPoint(npnt,x1-xn,z0);
+    x.push_back(x1-xn);
+    z.push_back(zn);
     //aoutRa<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
   }else{
-    gr3->SetPoint(npnt,xn,z0);
+    x.push_back(xn);
+    z.push_back(zn);
     //aoutRa<<npnt<<" "<<xn<<" "<<zn<<endl;
   }  
   
@@ -1642,12 +1655,11 @@ TGraph* IceRayTracing::GetFullRefractedRayPath(double z0, double x1, double z1, 
     z1=dsw;
   }
   
-  return gr3;
-  
 }
 
 /* function for plotting and storing all the rays */
 void IceRayTracing::PlotAndStoreRays(double x0,double z0, double z1, double x1, double zmax[2], double lvalues[4], double checkzeroes[4]){
+
   
   double lvalueD=lvalues[0];
   double lvalueR=lvalues[1];
@@ -1657,86 +1669,23 @@ void IceRayTracing::PlotAndStoreRays(double x0,double z0, double z1, double x1, 
   double checkzeroR=checkzeroes[1];
   double checkzeroRa[2]={checkzeroes[2],checkzeroes[3]}; 
 
-  TMultiGraph *mg=new TMultiGraph();
-  
-  TGraph *gr1=GetFullDirectRayPath(z0,x1,z1,lvalueD);
-  TGraph *gr2=GetFullReflectedRayPath(z0,x1,z1,lvalueR);
-  TGraph *gr3A=new TGraph();
-  TGraph *gr3B=new TGraph();
-  
-  if((fabs(checkzeroR)>0.5 || fabs(checkzeroD)>0.5) && fabs(checkzeroRa[0])<0.5){  
-    gr3A=GetFullRefractedRayPath(z0,x1,z1,zmax[0],lvalueRa[0],1);
-    if(fabs(checkzeroRa[1])<0.5){ 
-      gr3B=GetFullRefractedRayPath(z0,x1,z1,zmax[1],lvalueRa[1],2);
+  vector <double> xD,zD;
+  vector <double> xR,zR;
+  vector <double> xRa[2],zRa[2];
+  GetFullDirectRayPath(z0,x1,z1,lvalueD,xD,zD);
+  GetFullReflectedRayPath(z0,x1,z1,lvalueR,xR,zR);
+  if((fabs(checkzeroR)>0.5 || fabs(checkzeroD)>0.5) && fabs(checkzeroRa[0])<0.5){
+    GetFullRefractedRayPath(z0,x1,z1,zmax[0],lvalueRa[0],xRa[0],zRa[0],1);
+    if(fabs(checkzeroRa[1])<0.5){
+      GetFullRefractedRayPath(z0,x1,z1,zmax[1],lvalueRa[1],xRa[1],zRa[1],2);
     }
   }
-
-  gr1->SetMarkerColor(kBlue);
-  gr2->SetMarkerColor(kBlue);
-  gr3A->SetMarkerColor(kBlue);
-  gr3B->SetMarkerColor(kBlue);
   
-  /* Plot the all the possible ray paths on the canvas */
-  TGraph *gr4=new TGraph();
-  gr4->SetPoint(0,x1,z1);
-  gr4->SetMarkerStyle(20);
-  gr4->SetMarkerColor(kRed);
-
-  TGraph *gr4b=new TGraph();
-  gr4b->SetPoint(0,0,z0);
-  gr4b->SetMarkerStyle(20);
-  gr4b->SetMarkerColor(kGreen);
+  /* An example of how the function returns the filled in vector and you can see the printed out values as a sanity check */
+  // for (int i=0;i<xD.size();i++){
+  //   cout<<i<<" "<<xD[i]<<" "<<zD[i]<<endl;
+  // }
   
-  double zlower=z0;
-  double zupper=z1;
-  if(fabs(z0)<fabs(z1)){
-    zlower=z1;
-    zupper=z0;
-  }
-  if(fabs(z0)>fabs(z1)){
-    zlower=z0;
-    zupper=z1;
-  }
-  TGraph *gr5=new TGraph();
-  gr5->SetPoint(0,0,zupper+100);
-  gr5->SetPoint(1,0,zlower-100);
-  gr5->SetPoint(2,x1+50,0);
-
-  if(fabs(checkzeroD)<0.5){
-    mg->Add(gr1);
-  }
-  if(fabs(checkzeroR)<0.5){
-    mg->Add(gr2);
-  }
-  if(fabs(checkzeroRa[0])<0.5){
-    mg->Add(gr3A);
-  }
-  if(fabs(checkzeroRa[1])<0.5){
-    mg->Add(gr3B);
-  }
-  
-  mg->Add(gr4);
-  mg->Add(gr4b);
-  //mg->Add(gr5);
-  
-  TString title="Depth vs Distance, Tx at x=";
-  title+=x0;
-  title+=" m,z=";
-  title+=(int)z0;
-  title+=" m, Rx at x=";
-  title+=x1;
-  title+=" m,z=";
-  title+=(int)z1;
-  title+=" m; Distance (m);Depth (m)";
-  mg->SetTitle(title);
-  
-  TCanvas *c2=new TCanvas("c2","c2");
-  c2->cd();
-  mg->Draw("ALP");
-  mg->GetXaxis()->SetNdivisions(20);
-  c2->SetGridx();
-  c2->SetGridy();
-
 }
 
 double *IceRayTracing::IceRayTracing(double x0, double z0, double x1, double z1){
@@ -1745,7 +1694,7 @@ double *IceRayTracing::IceRayTracing(double x0, double z0, double x1, double z1)
   double *output=new double[29];
 
   /* Store the ray paths in text files */
-  bool PlotRayPaths=true;
+  bool PlotRayPaths=false;
   /* calculate the attenuation (not included yet!) */
   bool attcal=false;
   
@@ -2090,10 +2039,9 @@ double *IceRayTracing::GetReflectedRayPar_Cnz(double z0, double x1 , double z1, 
   return output;
 }
 
-
-/* This function returns the x and z values for the full Direct ray path in a TGraph and also prints out the ray path in a text file. This is for a constant refractive index. */
-TGraph* IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1, double lvalueD, double A_ice_Cnz){
-
+/* This function returns the x and z values for the full Direct ray and prints out the ray path in a text file. This is for a constant refractive index. */
+void IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1, double lvalueD, double A_ice_Cnz, vector <double> &x, vector <double> &z){
+  
   /* My raytracer can only work the Tx is below the Rx. If the Tx is higher than the Rx than we need to flip the depths to allow for raytracing and then we will flip them back later at the end */
   bool Flip=false;
   double dsw=z0;
@@ -2106,7 +2054,7 @@ TGraph* IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1,
   /* Set the name of the text files */
   //ofstream aoutD("DirectRay_Cnz.txt");
   /* Set the step size for plotting */
-  double h=0.1;
+  double h=0.5;
   /* Set the total steps required for looping over the whole ray path */
   int dmax=100000;
   /* Set the values to start the rays from */
@@ -2119,20 +2067,21 @@ TGraph* IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1,
   struct IceRayTracing::fDnfR_params params6a;
   struct IceRayTracing::fDnfR_params params6b;
   
-  TGraph *gr1=new TGraph();
   for(int i=0;i<dmax;i++){
     params6a = {A_ice_Cnz, IceRayTracing::GetB(zn), IceRayTracing::GetC(zn), lvalueD};
     params6b = {A_ice_Cnz, IceRayTracing::GetB(z0), IceRayTracing::GetC(z0), lvalueD};
     xn=IceRayTracing::fDnfR_Cnz(zn,&params6a)-IceRayTracing::fDnfR_Cnz(z0,&params6b);
     checknan=IceRayTracing::fDnfR(zn,&params6a);
     if(std::isnan(checknan)==false && Flip==false){
-      gr1->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutD<<npnt<<" "<<xn<<" "<<zn<<endl;;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && Flip==true){
-      gr1->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutD<<npnt<<" "<<x1-xn<<" "<<zn<<endl;;
       npnt++;
     }
@@ -2148,10 +2097,12 @@ TGraph* IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1,
   params6b = {A_ice_Cnz, 0, 0, lvalueD};
   xn=IceRayTracing::fDnfR_Cnz(zn,&params6a)-IceRayTracing::fDnfR_Cnz(z0,&params6b); 
   if(Flip==true){
-    gr1->SetPoint(npnt,x1-xn,z0);
+    x.push_back(x1-xn);
+    z.push_back(zn);
     //aoutD<<npnt<<" "<<x1-xn<<" "<<zn<<endl;;
   }else{
-    gr1->SetPoint(npnt,xn,z0);
+    x.push_back(xn);
+    z.push_back(zn);
     //aoutD<<npnt<<" "<<xn<<" "<<zn<<endl;;
   }
   npnt++;
@@ -2164,11 +2115,10 @@ TGraph* IceRayTracing::GetFullDirectRayPath_Cnz(double z0, double x1, double z1,
     z1=dsw;
   }
   
-  return gr1;
 }
 
-/* This function returns the x and z values for the full Reflected ray path in a TGraph and also prints out the ray path in a text file. This is for a constant refractive index. */
-TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double z1, double lvalueR, double A_ice_Cnz){
+/* This function returns the x and z values for the full Reflected ray and prints out the ray path in a text file. This is for a constant refractive index. */
+void IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double z1, double lvalueR, double A_ice_Cnz,vector <double> &x, vector <double> &z){
 
   /* My raytracer can only work the Tx is below the Rx. If the Tx is higher than the Rx than we need to flip the depths to allow for raytracing and then we will flip them back later at the end */
   bool Flip=false;
@@ -2182,7 +2132,7 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
   // /* Set the name of the text files */
   //ofstream aoutR("ReflectedRay_Cnz.txt");
   /* Set the step size for plotting. */
-  double h=0.1;
+  double h=0.5;
   /* Set the total steps required for looping over the whole ray path */
   int dmax=100000;
   /* Set the values to start the rays from */
@@ -2197,7 +2147,6 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
   struct IceRayTracing::fDnfR_params params6c;
 
   /* Map out the 1st part of the reflected ray */
-  TGraph *gr2=new TGraph();
   for(int i=0;i<dmax;i++){
     params6a = {A_ice_Cnz, 0, 0, lvalueR};
     params6b = {A_ice_Cnz, 0, 0, lvalueR};
@@ -2205,13 +2154,15 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
     xn=(IceRayTracing::fDnfR_Cnz(-zn,&params6a)-IceRayTracing::fDnfR_Cnz(-z0,&params6b)+2*fabs(IceRayTracing::fDnfR_Cnz(0.0,&params6c)-IceRayTracing::fDnfR_Cnz(-z0,&params6b)));
     checknan=IceRayTracing::fDnfR_Cnz(-zn,&params6a);
     if(std::isnan(checknan)==false && zn<=0 && Flip==false){
-      gr2->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn); 
       //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
 
     if(std::isnan(checknan)==false && zn<=0 && Flip==true){
-      gr2->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -2230,13 +2181,15 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
     xn=IceRayTracing::fDnfR_Cnz(zn,&params6a)-IceRayTracing::fDnfR_Cnz(z0,&params6b);
     checknan=IceRayTracing::fDnfR_Cnz(zn,&params6a);
     if(std::isnan(checknan)==false && Flip==false){
-      gr2->SetPoint(npnt,xn,zn);
+      x.push_back(xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
       npnt++;
     }
       
     if(std::isnan(checknan)==false && Flip==true){
-      gr2->SetPoint(npnt,x1-xn,zn);
+      x.push_back(x1-xn);
+      z.push_back(zn);
       //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
       npnt++;
     }
@@ -2252,10 +2205,12 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
   params6b = {A_ice_Cnz, 0, 0, lvalueR};
   xn=IceRayTracing::fDnfR_Cnz(zn,&params6a)-IceRayTracing::fDnfR_Cnz(z0,&params6b);
   if(Flip==true){
-    gr2->SetPoint(npnt,x1-xn,zn);
+    x.push_back(x1-xn);
+    z.push_back(zn);
     //aoutR<<npnt<<" "<<x1-xn<<" "<<zn<<endl;
   }else{
-    gr2->SetPoint(npnt,xn,zn);
+    x.push_back(xn);
+    z.push_back(zn);
     //aoutR<<npnt<<" "<<xn<<" "<<zn<<endl;
   }
   
@@ -2267,75 +2222,19 @@ TGraph* IceRayTracing::GetFullReflectedRayPath_Cnz(double z0, double x1, double 
     z1=dsw;
   }
 
-  return gr2;
-
 }
 
 /* function for plotting and storing all the rays. This is for constant refractive index. */
 void IceRayTracing::PlotAndStoreRays_Cnz(double x0,double z0, double z1, double x1, double lvalues[2], double A_ice_Cnz){
-  
+
   double lvalueD=lvalues[0];
   double lvalueR=lvalues[1];
 
-  TMultiGraph *mg=new TMultiGraph();
+  vector <double> xD,zD;
+  vector <double> xR,zR;
+  GetFullDirectRayPath_Cnz(z0,x1,z1,lvalueD,A_ice_Cnz,xD,zD);
+  GetFullReflectedRayPath_Cnz(z0,x1,z1,lvalueR,A_ice_Cnz,xR,zR);
   
-  TGraph *gr1=GetFullDirectRayPath_Cnz(z0,x1,z1,lvalueD,A_ice_Cnz);
-  TGraph *gr2=GetFullReflectedRayPath_Cnz(z0,x1,z1,lvalueR,A_ice_Cnz);
- 
-  gr1->SetMarkerColor(kBlue);
-  gr2->SetMarkerColor(kBlue); 
-  
-  /* Plot the all the possible ray paths on the canvas */
-  TGraph *gr4=new TGraph();
-  gr4->SetPoint(0,x1,z1);
-  gr4->SetMarkerStyle(20);
-  gr4->SetMarkerColor(kRed);
-
-  TGraph *gr4b=new TGraph();
-  gr4b->SetPoint(0,0,z0);
-  gr4b->SetMarkerStyle(20);
-  gr4b->SetMarkerColor(kGreen);
-    
-  gr1->SetMarkerStyle(20);
-  gr1->SetMarkerColor(2);
-
-  gr2->SetMarkerStyle(20);
-  gr2->SetMarkerColor(2);
-
-  double zlower=z0;
-  if(fabs(z0)<fabs(z1)){
-    zlower=z1;
-  }
-  if(fabs(z0)>fabs(z1)){
-    zlower=z0;
-  }
-  TGraph *gr5=new TGraph();
-  gr5->SetPoint(0,0,zlower-50);
-  gr5->SetPoint(1,x1+50,0);
-
-  mg->Add(gr1);
-  mg->Add(gr2);
-  mg->Add(gr4);
-  mg->Add(gr4b);
-  //mg->Add(gr5);
-
-  TString title="Depth vs Distance, Tx at x=";
-  title+=x0;
-  title+=" m,z=";
-  title+=(int)z0;
-  title+=" m, Rx at x=";
-  title+=x1;
-  title+=" m,z=";
-  title+=(int)z1;
-  title+=" m; Distance (m);Depth (m)";
-  mg->SetTitle(title);
-  
-  TCanvas *cRay2=new TCanvas("cRay2","cRay2");
-  cRay2->cd();
-  mg->Draw("AP");
-  mg->GetXaxis()->SetNdivisions(20);
-  cRay2->SetGridx();
-  cRay2->SetGridy();
 }
 
 /* This is the main raytracing function. x0 always has to be zero. z0 is the Tx depth in m and z1 is the depth of the Rx in m. Both depths are negative. x1 is the distance between them. This functions works for a constant refractive index */
@@ -2539,7 +2438,7 @@ double* IceRayTracing::GetDirectRayPar_Air(double z0, double x1, double z1){
   return output;
 }
 
-double *IceRayTracing::GeantRayTracer(double xT, double yT, double zT, double xR, double yR, double zR){
+double *IceRayTracing::DirectRayTracer(double xT, double yT, double zT, double xR, double yR, double zR){
   double TxCor[3]={xT,yT,zT};
   double RxCor[3]={xR,yR,zR};
   
@@ -2574,7 +2473,7 @@ double *IceRayTracing::GeantRayTracer(double xT, double yT, double zT, double xR
   //cout<<" "<<endl;
   //cout<<"x0="<<x0<<" m , z0="<<z0<<" m ,x1="<<x1<<" m ,z1="<<z1<<" m "<<endl;
 
-  vector <double> OutputValues[4];
+  vector <double> OutputValues[5];
   
   if(getresults[8]!=-1000){ 
     // cout<<"*******For the Direct Ray********"<<endl;
@@ -2585,6 +2484,7 @@ double *IceRayTracing::GeantRayTracer(double xT, double yT, double zT, double xR
     OutputValues[1].push_back(getresults[8]);
     OutputValues[2].push_back(getresults[25]);
     OutputValues[3].push_back(getresults[4]*IceRayTracing::c_light_ms);
+    OutputValues[4].push_back(getresults[4]);
   }
 
   if(getresults[10]!=-1000){ 
@@ -2596,6 +2496,7 @@ double *IceRayTracing::GeantRayTracer(double xT, double yT, double zT, double xR
     OutputValues[1].push_back(getresults[10]);
     OutputValues[2].push_back(getresults[27]);
     OutputValues[3].push_back(getresults[6]*IceRayTracing::c_light_ms);
+    OutputValues[4].push_back(getresults[6]);
   }
 
   if(getresults[11]!=-1000){ 
@@ -2607,21 +2508,32 @@ double *IceRayTracing::GeantRayTracer(double xT, double yT, double zT, double xR
     OutputValues[1].push_back(getresults[11]);
     OutputValues[2].push_back(getresults[28]);
     OutputValues[3].push_back(getresults[7]*IceRayTracing::c_light_ms);
+    OutputValues[4].push_back(getresults[7]);
   }
 
   double *output=new double[4];
   
   if(OutputValues[3].size()!=0){
-    int MinValueBin=TMath::LocMin(OutputValues[3].size(),OutputValues[3].data());
+    int MinValueBin=0;//=TMath::LocMin(OutputValues[3].size(),OutputValues[3].data());
+    double min=1e9;
+    for(int i=0;i<OutputValues[3].size();i++){
+      if(OutputValues[3][i]<min){
+	min=OutputValues[3][i];
+	MinValueBin=i;
+      }
+    }
+    
     output[0]=OutputValues[0][MinValueBin];
     output[1]=OutputValues[1][MinValueBin];
     output[2]=OutputValues[2][MinValueBin];
     output[3]=OutputValues[3][MinValueBin];
+    output[4]=OutputValues[4][MinValueBin];
   }else{
     output[0]=-1000;
     output[1]=-1000;
     output[2]=-1000;
     output[3]=-1000;
+    output[4]=-1000;
   }
   
   delete []getresults;
@@ -2661,7 +2573,7 @@ void IceRayTracing::MakeTable(double ShowerHitDistance,double zT){
       double xR=IceRayTracing::GridStartX+IceRayTracing::GridStepSizeX_O*ix;
       double zR=IceRayTracing::GridStartZ+IceRayTracing::GridStepSizeZ_O*iz;
 
-      double *RTresults=IceRayTracing::GeantRayTracer(0, 0, zT, xR,0, zR);
+      double *RTresults=IceRayTracing::DirectRayTracer(0, 0, zT, xR,0, zR);
       if(RTresults[2]!=-1000){
 	IceRayTracing::GridPositionX.push_back(xR);
 	IceRayTracing::GridPositionZ.push_back(zR);
@@ -2778,14 +2690,16 @@ double IceRayTracing::GetInterpolatedValue(double xR, double zR, int rtParameter
   
 }
 
-void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, double TxDepth, double TimeRay[2], double PathRay[2], double LaunchAngle[2], double RecieveAngle[2], int IgnoreCh[2], double IncidenceAngleInIce[2],vector <double> xRay[2], vector <double> zRay[2]){
+
+void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, double TxDepth, double TimeRay[2], double PathRay[2], double LaunchAngle[2], double RecieveAngle[2], int IgnoreCh[2], double IncidenceAngleInIce[2], double A0, double frequency, double AttRay[2]){
   
   int DHits=0,RHits=0;
   double timeD, timeR, timeRa[2];
   double pathD, pathR, pathRa[2];
   double RangD, RangR, RangRa[2];
   double LangD, LangR, LangRa[2];
-
+  double LvalueD, LvalueR, LvalueRa[2],zmax[2];
+  double AttD, AttR, AttRa[2];
   int RayType[2];
   
   // double Distance=sqrt(pow(RxCor[0]-TxCor[0],2) + pow(RxCor[1]-TxCor[1],2));
@@ -2813,10 +2727,10 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
   // cout<<"Recieve Angle: "<<RTresults[11]<<" deg"<<endl;
   // cout<<"Propogation Time: "<<RTresults[7]*pow(10,9)<<" ns"<<endl;
   
-  timeD=RTresults[4]*pow(10,9);
-  timeR=RTresults[5]*pow(10,9);
-  timeRa[0]=RTresults[6]*pow(10,9);
-  timeRa[1]=RTresults[7]*pow(10,9);
+  timeD=RTresults[4];//*pow(10,9);
+  timeR=RTresults[5];//*pow(10,9);
+  timeRa[0]=RTresults[6];//*pow(10,9);
+  timeRa[1]=RTresults[7];//*pow(10,9);
 
   pathD=RTresults[25];
   pathR=RTresults[26];
@@ -2833,6 +2747,32 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
   LangRa[0]=RTresults[2];
   LangRa[1]=RTresults[3];
   
+  LvalueD=RTresults[19];
+  LvalueR=RTresults[20];
+  LvalueRa[0]=RTresults[21];
+  LvalueRa[1]=RTresults[22];
+
+  zmax[0]=RTresults[23];
+  zmax[1]=RTresults[24];
+
+  AttD=0;
+  AttR=0;
+  AttRa[0]=0;
+  AttRa[1]=0;
+  
+  if(RangD!=-1000){
+    AttD=1-IceRayTracing::GetTotalAttenuationDirect (A0, frequency, TxDepth, RxDepth,LvalueD);
+  }
+  if(RangR!=-1000){
+    AttR=1-IceRayTracing::GetTotalAttenuationReflected (A0, frequency, TxDepth, RxDepth,LvalueR);
+  }
+  if(RangRa[0]!=-1000){
+    AttRa[0]=1-IceRayTracing::GetTotalAttenuationRefracted (A0, frequency, TxDepth, RxDepth,zmax[0],LvalueRa[0]);
+  }
+  if(RangRa[1]!=-1000){
+    AttRa[1]=1-IceRayTracing::GetTotalAttenuationRefracted (A0, frequency, TxDepth, RxDepth,zmax[1],LvalueRa[1]);
+  }
+   
   TimeRay[0]=timeD;
   TimeRay[1]=timeR;
   
@@ -2845,6 +2785,9 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
   LaunchAngle[0]=LangD;
   LaunchAngle[1]=LangR;
 
+  AttRay[0]=AttD;
+  AttRay[1]=AttR;
+  
   RayType[0]=1;
   RayType[1]=2;
 
@@ -2854,14 +2797,6 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     IncidenceAngleInIce[0]=100;
     IncidenceAngleInIce[1]=100;
   }
-
-  double lvalueD=RTresults[19];
-  double lvalueR=RTresults[20];
-  double lvalueRa[2]={RTresults[21],RTresults[22]};
-
-  double zmax[2]={0,0};
-  zmax[0]=RTresults[23];  
-  zmax[1]=RTresults[24];
   
   if(RangD!=-1000){
     TimeRay[0]=timeD;
@@ -2869,6 +2804,7 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     RecieveAngle[0]=RangD;
     LaunchAngle[0]=LangD;
     RayType[0]=1;
+    AttRay[0]=AttD;
   }
 
   if(RangR!=-1000){
@@ -2877,6 +2813,7 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     RecieveAngle[1]=RangR;
     LaunchAngle[1]=LangR;
     RayType[1]=2;
+    AttRay[1]=AttR;
   }
     
   if(RangRa[0]!=-1000 && RangD!=-1000){
@@ -2884,12 +2821,15 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     PathRay[0]=pathD;
     RecieveAngle[0]=RangD;
     LaunchAngle[0]=LangD;
+    RayType[0]=1;
+    AttRay[0]=AttD;
+    
     TimeRay[1]=timeRa[0];
     PathRay[1]=pathRa[0];
     RecieveAngle[1]=RangRa[0];
     LaunchAngle[1]=LangRa[0];
-    RayType[0]=1;
     RayType[1]=3;
+    AttRay[1]=AttRa[0];
   }
       
   if(RangRa[0]!=-1000 && RangR!=-1000){
@@ -2897,12 +2837,15 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     PathRay[1]=pathR;
     RecieveAngle[1]=RangR;
     LaunchAngle[1]=LangR;
+    RayType[1]=2;
+    AttRay[1]=AttR;
+    
     TimeRay[0]=timeRa[0];
     PathRay[0]=pathRa[0];
     RecieveAngle[0]=RangRa[0];
     LaunchAngle[0]=LangRa[0];
     RayType[0]=3;
-    RayType[1]=2;
+    AttRay[0]=AttRa[0];
   }
 
   if(RangRa[1]!=-1000 && RangD!=-1000){
@@ -2910,12 +2853,15 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     PathRay[0]=pathD;
     RecieveAngle[0]=RangD;
     LaunchAngle[0]=LangD;
+    RayType[0]=1;
+    AttRay[0]=AttD;
+    
     TimeRay[1]=timeRa[1];
     PathRay[1]=pathRa[1];
     RecieveAngle[1]=RangRa[1];
     LaunchAngle[1]=LangRa[1];
-    RayType[0]=1;
     RayType[1]=4;
+    AttRay[1]=AttRa[1];
   }
       
   if(RangRa[1]!=-1000 && RangR!=-1000){
@@ -2923,12 +2869,15 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     PathRay[1]=pathR;
     RecieveAngle[1]=RangR;
     LaunchAngle[1]=LangR;
+    RayType[1]=2;
+    AttRay[1]=AttR;
+    
     TimeRay[0]=timeRa[1];
     PathRay[0]=pathRa[1];
     RecieveAngle[0]=RangRa[1];
     LaunchAngle[0]=LangRa[1];
     RayType[0]=4;
-    RayType[1]=2;
+    AttRay[0]=AttRa[1];
   }
 
   if(RangRa[1]!=-1000 && RangRa[0]!=-1000){
@@ -2936,12 +2885,15 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     PathRay[1]=pathRa[1];
     RecieveAngle[1]=RangRa[1];
     LaunchAngle[1]=LangRa[1];
+    RayType[1]=4;
+    AttRay[1]=AttRa[1];
+    
     TimeRay[0]=timeRa[0];
     PathRay[0]=pathRa[0];
     RecieveAngle[0]=RangRa[0];
     LaunchAngle[0]=LangRa[0];
     RayType[0]=3;
-    RayType[1]=4;
+    AttRay[0]=AttRa[0];
   }
 
   if(RecieveAngle[1]==-1000 && RecieveAngle[0]==-1000 && RangRa[0]!=-1000){
@@ -2950,6 +2902,7 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     RecieveAngle[0]=RangRa[0];
     LaunchAngle[0]=LangRa[0];
     RayType[0]=3;
+    AttRay[0]=AttRa[0];
   }
 
   if(RecieveAngle[1]==-1000 && RecieveAngle[0]==-1000 && RangRa[1]!=-1000){
@@ -2958,6 +2911,7 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     RecieveAngle[1]=RangRa[1];
     LaunchAngle[1]=LangRa[1];
     RayType[1]=4;
+    AttRay[1]=AttRa[1];
   }
 
   IgnoreCh[0]=1;
@@ -2977,32 +2931,36 @@ void IceRayTracing::GetRayTracingSolutions(double RxDepth, double Distance, doub
     swap(TimeRay[0],TimeRay[1]);
     swap(RayType[0],RayType[1]);
     swap(PathRay[0],PathRay[1]);
+    swap(AttRay[0],AttRay[1]);
   }
+
+  //vector <double> xRay[2];
+  //vector <double> zRay[2];
   
-  for(int iray=0;iray<2;iray++){
-    if(IgnoreCh[iray]!=0){
-      TGraph *gr;
-      if(RayType[iray]==1 ){
-	gr=IceRayTracing::GetFullDirectRayPath(TxDepth,Distance,RxDepth,lvalueD);
-      }
-      if(RayType[iray]==2){
-	gr=IceRayTracing::GetFullReflectedRayPath(TxDepth,Distance,RxDepth,lvalueR);
-      }
-      if(RayType[iray]==3){
-	gr=IceRayTracing::GetFullRefractedRayPath(TxDepth,Distance,RxDepth,zmax[0],lvalueRa[0],1);
-      }
-      if(RayType[iray]==4){
-	gr=IceRayTracing::GetFullRefractedRayPath(TxDepth,Distance,RxDepth,zmax[1],lvalueRa[1],2);
-      }
-      double x,z;
-      for(int ibin=0;ibin<gr->GetN();ibin++){
-	gr->GetPoint(ibin,x,z);
-	xRay[iray].push_back(x);
-	zRay[iray].push_back(z);
-      }
-      delete gr;
-    }
-  }
+  // for(int iray=0;iray<2;iray++){
+  //   if(IgnoreCh[iray]!=0){
+  //     TGraph *gr;
+  //     if(RayType[iray]==1 ){
+  // 	gr=IceRayTracing::GetFullDirectRayPath(TxDepth,Distance,RxDepth,lvalueD);
+  //     }
+  //     if(RayType[iray]==2){
+  // 	gr=IceRayTracing::GetFullReflectedRayPath(TxDepth,Distance,RxDepth,lvalueR);
+  //     }
+  //     if(RayType[iray]==3){
+  // 	gr=IceRayTracing::GetFullRefractedRayPath(TxDepth,Distance,RxDepth,zmax[0],lvalueRa[0],1);
+  //     }
+  //     if(RayType[iray]==4){
+  // 	gr=IceRayTracing::GetFullRefractedRayPath(TxDepth,Distance,RxDepth,zmax[1],lvalueRa[1],2);
+  //     }
+  //     double x,z;
+  //     for(int ibin=0;ibin<gr->GetN();ibin++){
+  // 	gr->GetPoint(ibin,x,z);
+  // 	xRay[iray].push_back(x);
+  // 	zRay[iray].push_back(z);
+  //     }
+  //     delete gr;
+  //   }
+  // }
     
   // cout<<"inside Ray 1 "<<TimeRay[0]<<" "<<LaunchAngle[0]<<" "<<RecieveAngle[0]<<" "<<IgnoreCh[0]<<endl;
   // cout<<"inside Ray 2 "<<TimeRay[1]<<" "<<LaunchAngle[1]<<" "<<RecieveAngle[1]<<" "<<IgnoreCh[1]<<endl;

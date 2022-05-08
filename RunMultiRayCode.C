@@ -3,12 +3,12 @@
 void RunMultiRayCode(){
   
   ////All variables are in m here
-  double AntennaDepth=100;////Depth of antenna in the ice
-  double IceLayerHeight=1000;////Height where the ice layer starts off
+  double AntennaDepth=200;////Depth of antenna in the ice
+  double IceLayerHeight=3000;////Height where the ice layer starts off
   double AntennaNumber=0;
   double AirTxHeight=5000;
   double HorizontalDistance=1000;
-  bool UseTable=true;
+  bool UseTable=false;
   
   double opticalPathLengthInIce;
   double opticalPathLengthInAir;
@@ -20,7 +20,9 @@ void RunMultiRayCode(){
   bool CheckSol=false;////check if solution exists or not
   
   if(UseTable==true){
-    MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepth*100,IceLayerHeight*100,AntennaNumber);
+    
+    MultiRayAirIceRefraction::MakeTable(IceLayerHeight,AntennaDepth);    
+    //MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepth*100,IceLayerHeight*100,AntennaNumber);
 
     CheckSol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(AirTxHeight*100, HorizontalDistance*100 ,AntennaDepth*100, IceLayerHeight*100,0,opticalPathLengthInIce, opticalPathLengthInAir, launchAngle, horidist2interpnt,reflectionCoefficientS,reflectionCoefficientP);
   }else{

@@ -42,6 +42,8 @@ int RayTracingFunctions::readATMpar(){
   RayTracingFunctions::abc[4][0]=RayTracingFunctions::abc[3][0];
   RayTracingFunctions::abc[4][1]=RayTracingFunctions::abc[3][1];
   RayTracingFunctions::abc[4][2]=RayTracingFunctions::abc[3][2];
+
+  RayTracingFunctions::ATMLAY[4]=150000*100;////set max possible height that can be used in cm
   
   return 0;
 }
@@ -569,7 +571,7 @@ double * RayTracingFunctions::GetAirPropagationPar(double LaunchAngleAir, double
     }
     
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-    Start_nh=gsl_spline_eval(spline, StartHeight, accelerator);
+    Start_nh=RayTracingFunctions::Getnz_air(StartHeight);//gsl_spline_eval(spline, StartHeight, accelerator);
     
     ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){
