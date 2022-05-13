@@ -40,8 +40,8 @@ namespace RayTracingFunctions{
   static double B_air[5];
 
   ////define variables which are going to be used by GSL for linear interpolation
-  gsl_interp_accel * accelerator;
-  gsl_spline *spline;
+  extern gsl_interp_accel * accelerator;
+  extern gsl_spline *spline;
 
   ////The variable which will store the max layers available in an atmosphere model
   static int MaxLayers=0;

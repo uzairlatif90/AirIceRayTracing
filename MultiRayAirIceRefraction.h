@@ -10,21 +10,16 @@
 #include <vector>
 #include <cstdlib>
 
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_roots.h>
-#include <gsl/gsl_deriv.h>
-#include <gsl/gsl_fit.h>
-#include <gsl/gsl_spline.h>
-
 #include <sys/time.h>
+
+#include "RayTracingFunctions.h"
 
 namespace MultiRayAirIceRefraction{
 
   /********Stuff for Interpolation**********/
-  static vector <double> GridPositionH;
-  static vector <double> GridPositionTh;
-  static vector <double> GridZValue[8];
+  static std::vector <double> GridPositionH;
+  static std::vector <double> GridPositionTh;
+  static std::vector <double> GridZValue[8];
 
   static double GridStartTh=90.1;
   static double GridStopTh=179.9;

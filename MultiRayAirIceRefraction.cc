@@ -1,5 +1,5 @@
 #include "MultiRayAirIceRefraction.h"
-#include "RayTracingFunctions.cc"
+//#include "RayTracingFunctions.cc"
 
 ////Store the maximum possible height allowed by GDAS tables
 double MaxAirTxHeight=0;
@@ -599,7 +599,7 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight,double AntennaDep
   auto t2b = std::chrono::high_resolution_clock::now();
   double Duration = std::chrono::duration_cast<std::chrono::seconds>( t2b - t1b ).count();
 
-  cout<<"The table took "<<Duration<<" s to make"<<endl;
+  std::cout<<"The table took "<<Duration<<" s to make"<<std::endl;
   //cout<<"sizes are of "<<MultiRayAirIceRefraction::GridPoints<<" "<<MultiRayAirIceRefraction::GridPositionH.size()<<endl;  
 }
 
