@@ -36,42 +36,71 @@ double* AirRayTracing_wROOTplot(double AirTxHeight, double AirRxHeight, double H
   double startanglelim=90;
   double endanglelim=180;
 
-  ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
-  bool checknan=false;
-  double TotalHorizontalDistanceinAirt=0;
-  int FilledLayerst=0;
-  while(checknan==false && startanglelim>89.9){
-    double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,AirRxHeight);
-    TotalHorizontalDistanceinAirt=0;
-    FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
-    for(int i=0;i<FilledLayerst;i++){
-      TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
-    }
-    delete []GetResultsAirTest1;
-    
-    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
-      checknan=true;
-    }else{
-      startanglelim=startanglelim+0.05;
-    }
-  }
+  double StraightAngle=180-(atan( HorizontalDistance/(AirTxHeight-IceLayerHeight+AntennaDepth) )*(180.0/RayTracingFunctions::pi) );
   
-  checknan=false;
-  while(checknan==false && endanglelim<180.1){
-    double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,AirRxHeight);
-    TotalHorizontalDistanceinAirt=0;
-    FilledLayerst=GetResultsAirTest2[4*RayTracingFunctions::MaxLayers];
-    for(int i=0;i<FilledLayerst;i++){
-      TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
-    }
-    delete []GetResultsAirTest2;
+  // ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
+  // bool checknan=false;
+  // double TotalHorizontalDistanceinAirt=0;
+  // int FilledLayerst=0;
+  // while(checknan==false && startanglelim>89.9){
+  //   double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,AirRxHeight);
+  //   TotalHorizontalDistanceinAirt=0;
+  //   FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
+  //   for(int i=0;i<FilledLayerst;i++){
+  //     TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
+  //   }
+  //   delete []GetResultsAirTest1;
     
-    if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0.){
-      checknan=true;
-    }else{
-      endanglelim=endanglelim-0.05;
+  //   if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0){
+  //     checknan=true;
+  //   }else{
+  //     startanglelim=startanglelim+0.05;
+  //   }
+  // }
+  
+  // checknan=false;
+  // while(checknan==false && endanglelim<180.1){
+  //   double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,AirRxHeight);
+  //   TotalHorizontalDistanceinAirt=0;
+  //   FilledLayerst=GetResultsAirTest2[4*RayTracingFunctions::MaxLayers];
+  //   for(int i=0;i<FilledLayerst;i++){
+  //     TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
+  //   }
+  //   delete []GetResultsAirTest2;
+    
+  //   if(isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0.){
+  //     checknan=true;
+  //   }else{
+  //     endanglelim=endanglelim-0.05;
+  //   }
+  // }
+
+  startanglelim=StraightAngle-16;
+  endanglelim=StraightAngle;
+
+  if(startanglelim<90.00){
+    startanglelim=90.05;
+    ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
+    bool checknan=false;
+    double TotalHorizontalDistanceinAirt=0;
+    int FilledLayerst=0;
+    while(checknan==false && startanglelim>89.9){
+      double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
+      TotalHorizontalDistanceinAirt=0;
+      FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
+      for(int i=0;i<FilledLayerst;i++){
+	TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
+      }
+      delete []GetResultsAirTest1;
+    
+      if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || startanglelim>endanglelim-1){    
+	checknan=true;
+      }else{
+	startanglelim=startanglelim+0.05;
+      }
     }
   }
+
   
   std::cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<std::endl;
   //std::cout<<" "<<std::endl;

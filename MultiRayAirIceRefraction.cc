@@ -47,7 +47,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
   bool CheckSolution=false;
   double checkminimisation=dummy[1]-HorizontalDistance;
 
-  if(fabs(checkminimisation)<10){
+  if((fabs(dummy[1]-HorizontalDistance)/HorizontalDistance<0.01 && HorizontalDistance<=100) || (fabs(dummy[1]-HorizontalDistance)<1 && HorizontalDistance>100)){
     CheckSolution=true;
   }
   
@@ -574,7 +574,7 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight,double AntennaDep
       MultiRayAirIceRefraction::GridPositionH.push_back(h);
       MultiRayAirIceRefraction::GridPositionTh.push_back(th);
 
-      if(fabs(dummy[1]-TotalHorizontalDistance)<10){
+      if((fabs(dummy[1]-TotalHorizontalDistance)/TotalHorizontalDistance<0.01 && TotalHorizontalDistance<=100) || (fabs(dummy[1]-TotalHorizontalDistance)<1 && TotalHorizontalDistance>100)){
 	MultiRayAirIceRefraction::GridZValue[0].push_back(dummy[0]);//0 is AirTxHeight
 	MultiRayAirIceRefraction::GridZValue[1].push_back((dummy[1]));//1 is THD
 	MultiRayAirIceRefraction::GridZValue[2].push_back(dummy[5]);//2 is Optical Path in Ice

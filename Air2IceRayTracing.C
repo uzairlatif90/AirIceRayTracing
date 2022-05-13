@@ -52,50 +52,78 @@ int main(int argc, char **argv){
   struct  RayTracingFunctions::MinforLAng_params params1 = { AirTxHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};
   F1.function = & RayTracingFunctions::MinimizeforLaunchAngle;
   F1.params = &params1;
-
+  
   ////Set the initial angle limits for the minimisation
   double startanglelim=90;
   double endanglelim=180;
 
-  ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
-  bool checknan=false;
-  double TotalHorizontalDistanceinAirt=0;
-  int FilledLayerst=0;
-  while(checknan==false && startanglelim>89.9){
-    double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
-    TotalHorizontalDistanceinAirt=0;
-    FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
-    for(int i=0;i<FilledLayerst;i++){
-      TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
-    }
-    delete []GetResultsAirTest1;
+  double StraightAngle=180-(atan( HorizontalDistance/(AirTxHeight-IceLayerHeight+AntennaDepth) )*(180.0/RayTracingFunctions::pi) );
 
-    //std::cout<<"startanglelim is "<<startanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
-    if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || startanglelim>180){
-      checknan=true;
-    }else{
-      startanglelim=startanglelim+0.05;
+  ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
+  // bool checknan=false;
+  // double TotalHorizontalDistanceinAirt=0;
+  // int FilledLayerst=0;
+  // while(checknan==false && startanglelim>89.9){
+  //   double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
+  //   TotalHorizontalDistanceinAirt=0;
+  //   FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
+  //   for(int i=0;i<FilledLayerst;i++){
+  //     TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
+  //   }
+  //   delete []GetResultsAirTest1;
+
+  //   //std::cout<<"startanglelim is "<<startanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
+  //   if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || startanglelim>180){
+  //     checknan=true;
+  //   }else{
+  //     startanglelim=startanglelim+0.05;
+  //   }
+  // }
+  
+  // checknan=false;
+  // while(checknan==false && endanglelim<180.1){
+  //   double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,IceLayerHeight);
+  //   TotalHorizontalDistanceinAirt=0;
+  //   FilledLayerst=GetResultsAirTest2[4*RayTracingFunctions::MaxLayers];
+  //   for(int i=0;i<FilledLayerst;i++){
+  //     TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
+  //   }
+  //   delete []GetResultsAirTest2;
+
+  //   //std::cout<<"endanglelim is "<<endanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
+  //   if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || endanglelim<90){
+  //     checknan=true;
+  //   }else{
+  //     endanglelim=endanglelim-0.05;
+  //   }
+  // }
+  
+  startanglelim=StraightAngle-16;
+  endanglelim=StraightAngle;
+
+  if(startanglelim<90.00){
+    startanglelim=90.05;
+    ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
+    bool checknan=false;
+    double TotalHorizontalDistanceinAirt=0;
+    int FilledLayerst=0;
+    while(checknan==false && startanglelim>89.9){
+      double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
+      TotalHorizontalDistanceinAirt=0;
+      FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
+      for(int i=0;i<FilledLayerst;i++){
+	TotalHorizontalDistanceinAirt+=GetResultsAirTest1[i*4];
+      }
+      delete []GetResultsAirTest1;
+    
+      if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || startanglelim>endanglelim-1){    
+	checknan=true;
+      }else{
+	startanglelim=startanglelim+0.05;
+      }
     }
   }
   
-  checknan=false;
-  while(checknan==false && endanglelim<180.1){
-    double *GetResultsAirTest2= RayTracingFunctions::GetAirPropagationPar(endanglelim,AirTxHeight,IceLayerHeight);
-    TotalHorizontalDistanceinAirt=0;
-    FilledLayerst=GetResultsAirTest2[4*RayTracingFunctions::MaxLayers];
-    for(int i=0;i<FilledLayerst;i++){
-      TotalHorizontalDistanceinAirt+=GetResultsAirTest2[i*4];
-    }
-    delete []GetResultsAirTest2;
-
-    //std::cout<<"endanglelim is "<<endanglelim<<" "<<TotalHorizontalDistanceinAirt<<std::endl;
-    if((isnan(TotalHorizontalDistanceinAirt)==false && (TotalHorizontalDistanceinAirt)>0) || endanglelim<90){
-      checknan=true;
-    }else{
-      endanglelim=endanglelim-0.05;
-    }
-  }
-
   std::cout<<"Launch Angle search range is:  Startangle "<<startanglelim<<" ,Endangle "<<endanglelim<<std::endl;
   // //std::cout<<" "<<std::endl;
 
@@ -103,7 +131,7 @@ int main(int argc, char **argv){
   
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleAir= RayTracingFunctions::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
-  std::cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleAir<<" deg"<<std::endl;
+  //std::cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleAir<<" deg"<<std::endl;
   
   double * GetResultsAir= RayTracingFunctions::GetAirPropagationPar(LaunchAngleAir,AirTxHeight,IceLayerHeight);
   int FilledLayers=GetResultsAir[4*RayTracingFunctions::MaxLayers];

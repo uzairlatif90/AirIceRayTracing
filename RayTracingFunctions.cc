@@ -301,28 +301,28 @@ double RayTracingFunctions::fDnfR(double x,void *params){
   return (L/C)*(1.0/sqrt(A*A-L*L))*(C*x-log(A*(A+B*exp(C*x))-L*L+sqrt(A*A-L*L)*sqrt(pow(A+B*exp(C*x),2)-L*L)));;
 }
 
-////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
-double RayTracingFunctions::fdxdz(double x,void *params){
+// ////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
+// double RayTracingFunctions::fdxdz(double x,void *params){
   
-  struct RayTracingFunctions::fdxdz_params *p= (struct RayTracingFunctions::fdxdz_params *) params;
-  double Lang = p->lang;
-  double Z0 = p->z0;
-  double Z1 = p->z1;
-  int AirOrIce = p->airorice;
+//   struct RayTracingFunctions::fdxdz_params *p= (struct RayTracingFunctions::fdxdz_params *) params;
+//   double Lang = p->lang;
+//   double Z0 = p->z0;
+//   double Z1 = p->z1;
+//   int AirOrIce = p->airorice;
 
-  double output=0,dumx=0;
-  if(AirOrIce==0){
-    dumx=(RayTracingFunctions::Getnz_ice(Z0)*sin(x))/RayTracingFunctions::Getnz_ice(Z1);
-  }
-  if(AirOrIce==1){
-    dumx=(RayTracingFunctions::Getnz_air(Z0)*sin(x))/RayTracingFunctions::Getnz_air(Z1);
-  }
-  //output=((dumx/sqrt(1-dumx*dumx)) - tan(Lang));
-  //cout<<"output is "<<output<<" "<<x<<endl;
-  output=dumx - sin(Lang);
+//   double output=0,dumx=0;
+//   if(AirOrIce==0){
+//     dumx=(RayTracingFunctions::Getnz_ice(Z0)*sin(x))/RayTracingFunctions::Getnz_ice(Z1);
+//   }
+//   if(AirOrIce==1){
+//     dumx=(RayTracingFunctions::Getnz_air(Z0)*sin(x))/RayTracingFunctions::Getnz_air(Z1);
+//   }
+//   //output=((dumx/sqrt(1-dumx*dumx)) - tan(Lang));
+//   //cout<<"output is "<<output<<" "<<x<<endl;
+//   output=dumx - sin(Lang);
   
-  return output;
-}
+//   return output;
+// }
 
 ////The function used to calculate ray propogation time in ice
 double RayTracingFunctions::ftimeD(double x,void *params){
@@ -442,12 +442,24 @@ double *RayTracingFunctions::GetLayerHitPointPar(double n_layer1, double RxDepth
   RayAngleInside2ndLayer=asin((n_layer1/nzTx)*sin(SurfaceRayIncidentAngle));////Use Snell's Law to find the angle of transmission in the 2ndlayer
   
   ////calculate the angle at which the target receives the ray
-  gsl_function F1;
-  struct RayTracingFunctions::fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
-  F1.function = &fdxdz;
-  F1.params = &params1;
-  //cout<<"limits are "<<RayAngleInside2ndLayer*(RayTracingFunctions::pi/180)<<" "<<GSLFnLimit*(180.0/RayTracingFunctions::pi)<<endl;
-  ReceiveAngle=RayTracingFunctions::FindFunctionRoot(F1,0.0*(RayTracingFunctions::pi/180),GSLFnLimit, gsl_root_fsolver_brent,0.00000001);
+  // gsl_function F1;
+  // struct RayTracingFunctions::fdxdz_params params1 = {RayAngleInside2ndLayer, RxDepth, TxDepth, AirOrIce};
+  // F1.function = &fdxdz;
+  // F1.params = &params1;
+  // //cout<<"limits are "<<RayAngleInside2ndLayer*(RayTracingFunctions::pi/180)<<" "<<GSLFnLimit*(180.0/RayTracingFunctions::pi)<<endl;
+  // ReceiveAngle=RayTracingFunctions::FindFunctionRoot(F1,0.0*(RayTracingFunctions::pi/180),GSLFnLimit, gsl_root_fsolver_brent,0.00000001);
+
+  double Lang = RayAngleInside2ndLayer;
+  double Z0 = RxDepth;
+  double Z1 = TxDepth;
+
+  if(AirOrIce==0){
+    ReceiveAngle= asin((RayTracingFunctions::Getnz_ice(Z1)*sin(Lang))/RayTracingFunctions::Getnz_ice(Z0));
+  }
+  if(AirOrIce==1){
+    ReceiveAngle= asin((RayTracingFunctions::Getnz_air(Z1)*sin(Lang))/RayTracingFunctions::Getnz_air(Z0));   
+  }
+  
   //std::cout<<"The angle from vertical at which the target recieves the ray is "<<ReceiveAngle*(180/RayTracingFunctions::pi)<<" deg"<<std::endl;
   
   ////calculate the distance of the point of incidence on the 2ndLayer surface and also the value of the L parameter of the solution

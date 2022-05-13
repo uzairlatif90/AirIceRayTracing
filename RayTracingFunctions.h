@@ -93,9 +93,9 @@ namespace RayTracingFunctions{
   struct fDnfR_params { double a, b, c, l; };
   double fDnfR(double x,void *params);
 
-  ////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
-  struct fdxdz_params { double lang, z0,z1; int airorice;};
-  double fdxdz(double x,void *params);
+  // ////Define the function that will be minimised to calculate the angle of reciept (from the vertical) on the antenna and the hit point of the ray on the ice surface given a ray incident angle
+  // struct fdxdz_params { double lang, z0,z1; int airorice;};
+  // double fdxdz(double x,void *params);
 
   ////The function used to calculate ray propogation time in ice
   struct ftimeD_params { double a, b, c, speedc,l; int airorice; };
