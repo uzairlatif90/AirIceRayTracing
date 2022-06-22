@@ -96,6 +96,10 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       }
     }
   }
+
+  if(endanglelim<90.001 && endanglelim>90.00){
+    endanglelim=90.05;
+  }
   
   std::cout<<"Launch Angle search range is:  Startangle "<<startanglelim<<" ,Endangle "<<endanglelim<<std::endl;
   // //std::cout<<" "<<std::endl;
@@ -213,7 +217,7 @@ void Air2IceRayTracing_wROOTplot(double AirTxHeight, double HorizontalDistance, 
       }
 
       ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-      Start_nh=gsl_spline_eval(RayTracingFunctions::spline, StartHeight, RayTracingFunctions::accelerator);
+      Start_nh=RayTracingFunctions::Getnz_air(StartHeight);
       
       ////Set the stopping height of the ray for propogation for that layer
       if(ilayer==(SkipLayersBelow-1)+1){

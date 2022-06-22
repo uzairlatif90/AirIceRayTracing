@@ -109,7 +109,7 @@ int main(int argc, char **argv){
     }
 
     ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-    Start_nh=gsl_spline_eval(RayTracingFunctions::spline, StartHeight, RayTracingFunctions::accelerator);
+    Start_nh=RayTracingFunctions::Getnz_air(StartHeight);
 
     ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){
@@ -177,9 +177,8 @@ int main(int argc, char **argv){
   // cout<<"LvalueIce "<<Lvalue<<endl;
   // cout<<"PropagationTimeIce "<<PropagationTimeIce<<" ns"<<endl;
 
-
   // ////Since we have the starting height of the ice layer we can find out the refactive index of air at that height from data using spline interpolation
-  // Start_nh=gsl_spline_eval(RayTracingFunctions::spline, IceLayerHeight, RayTracingFunctions::accelerator);
+  // Start_nh=RayTracingFunctions::Getnz_air(IceLayerHeight);
   
   // ////Set the stopping depth of the ray for propogation to be the depth of the antenna
   // StopHeight=AntennaDepth;

@@ -89,7 +89,7 @@ void SingleRayAirIceRefraction_wROOTGr(double AntennaDepth, double RayLaunchAngl
     }
 
     ////Since we have the starting height now we can find out the refactive index at that height from data using RayTracingFunctions::spline interpolation
-    Start_nh=gsl_spline_eval(RayTracingFunctions::spline, StartHeight, RayTracingFunctions::accelerator);
+    Start_nh=RayTracingFunctions::Getnz_air(StartHeight);
 
     ////Set the stopping height of the ray for propogation for that layer
     if(ilayer==(SkipLayersBelow-1)+1){

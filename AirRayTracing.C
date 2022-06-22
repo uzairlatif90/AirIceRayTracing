@@ -58,7 +58,7 @@ int main(int argc, char **argv){
   double startanglelim=90;
   double endanglelim=180;
 
-  double StraightAngle=180-(atan( HorizontalDistance/(AirTxHeight-IceLayerHeight+AntennaDepth) )*(180.0/RayTracingFunctions::pi) );
+  double StraightAngle=180-(atan( HorizontalDistance/(AirTxHeight-AirRxHeight) )*(180.0/RayTracingFunctions::pi) );
   
   // ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
   // bool checknan=false;
@@ -107,7 +107,7 @@ int main(int argc, char **argv){
     double TotalHorizontalDistanceinAirt=0;
     int FilledLayerst=0;
     while(checknan==false && startanglelim>89.9){
-      double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,IceLayerHeight);
+      double *GetResultsAirTest1= RayTracingFunctions::GetAirPropagationPar(startanglelim,AirTxHeight,AirRxHeight);
       TotalHorizontalDistanceinAirt=0;
       FilledLayerst=GetResultsAirTest1[4*RayTracingFunctions::MaxLayers];
       for(int i=0;i<FilledLayerst;i++){
@@ -121,6 +121,10 @@ int main(int argc, char **argv){
 	startanglelim=startanglelim+0.05;
       }
     }
+  }
+
+  if(endanglelim<90.001 && endanglelim>90.00){
+    endanglelim=90.05;
   }
   
   std::cout<<"startangle "<<startanglelim<<" endangle "<<endanglelim<<std::endl;
@@ -242,7 +246,7 @@ int main(int argc, char **argv){
       }
 
       ////Since we have the starting height now we can find out the refactive index at that height from data using spline interpolation
-      Start_nh=gsl_spline_eval(RayTracingFunctions::spline, StartHeight, RayTracingFunctions::accelerator);
+      Start_nh=RayTracingFunctions::Getnz_air(StartHeight);
       
       ////Set the stopping height of the ray for propogation for that layer
       if(ilayer==(SkipLayersBelow-1)+1){

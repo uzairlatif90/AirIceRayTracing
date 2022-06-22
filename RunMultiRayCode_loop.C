@@ -1,15 +1,14 @@
 #include "MultiRayAirIceRefraction.cc"
 
-void RunMultiRayCode_loop()
+void RunMultiRayCode_loop(){
   
   ////All variables are in m here
-  double AntennaDepth=200;////Depth of antenna in the ice
+  double AntennaDepth=-200;////Depth of antenna in the ice
   double IceLayerHeight=3000;////Height where the ice layer starts off
   double AntennaNumber=0;
   
-  RayTracingFunctions::MakeAtmosphere();
-  MultiRayAirIceRefraction::MakeTable(IceLayerHeight,AntennaDepth);
-  
+  MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepth*100, IceLayerHeight*100, 0);
+
   double GridStepSizeHb=123;
   double GridStepSizeThb=0.23;
 
@@ -19,6 +18,9 @@ void RunMultiRayCode_loop()
 
   double GridStartHb=IceLayerHeight+1;////just set a non-zeronumber for now
   double GridStopHb=100000;////just set a non-zeronumber for now
+  if(AntennaDepth>=0){
+    GridStartHb=AntennaDepth+IceLayerHeight+1;
+  }
   double GridWidthHb=GridStopHb-GridStartHb;
 
   int GridPointsb=100;////just set a non-zeronumber for now
@@ -34,7 +36,7 @@ void RunMultiRayCode_loop()
   TH2D *h2corr=new TH2D("","",100,(GridStartHb-1),(GridStopHb+1),100,GridStartThb-1,GridStopThb+1);
   //TH2D *launchtest=new TH2D("","",100,(GridStartHb-1),(GridStopHb+1),100,GridStartThb-1,GridStopThb+1);
 
-  TH1D * h1=new TH1D("","",200,0,2000);
+  TH1D * h1=new TH1D("","",200,0,20000);
   TH1D * h1error_dRR=new TH1D("","",200,0,100);
   TH1D * h1error=new TH1D("","",200,0,100);
 
@@ -43,7 +45,6 @@ void RunMultiRayCode_loop()
   TGraph2D* gr2b=new TGraph2D();
   TGraph2D* gr2c=new TGraph2D();
   TGraph2D* gr2corr=new TGraph2D();
-  TGraph2D* launchtest=new TGraph2D();
   
   int count1=0;
   int count2=0;
@@ -58,54 +59,62 @@ void RunMultiRayCode_loop()
 
       double hR=GridStartHb+GridStepSizeHb*ih;
       double thR=GridStartThb+GridStepSizeThb*ith;
+      double TotalHorizontalDistance=0;
+      if(AntennaDepth<0){
+	TotalHorizontalDistance=(hR-IceLayerHeight-AntennaDepth)*tan((180-thR)*(MultiRayAirIceRefraction::pi/180.0));
+      }
+      if(AntennaDepth>=0){
+	TotalHorizontalDistance=(hR-(IceLayerHeight+AntennaDepth))*tan((180-thR)*(MultiRayAirIceRefraction::pi/180.0));
+      }
       
-      double TotalHorizontalDistance=(hR-IceLayerHeight+AntennaDepth)*tan((180-thR)*(RayTracingFunctions::pi/180.0));
-      //cout<<"h "<<h<<" th "<<th<<" THD "<<TotalHorizontalDistance<<endl;
-      double dummy[14];
+      
+      double dummy[20];
+
+      double opticalPathLengthInIce;
+      double opticalPathLengthInAir;
+      double geometricalPathLengthInIce;
+      double geometricalPathLengthInAir;
+      double launchAngle;
+      double horizontalDistanceToIntersectionPoint;
+      double reflectionCoefficientS;
+      double reflectionCoefficientP;
+      bool checksol=true;
 
       auto t1 = std::chrono::high_resolution_clock::now();
-      MultiRayAirIceRefraction::Air2IceRayTracing(hR, TotalHorizontalDistance, IceLayerHeight, AntennaDepth,thR, dummy);
+      checksol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint( hR*100,  TotalHorizontalDistance*100, AntennaDepth*100,  IceLayerHeight*100, opticalPathLengthInIce, opticalPathLengthInAir, geometricalPathLengthInIce, geometricalPathLengthInAir,launchAngle,horizontalDistanceToIntersectionPoint,reflectionCoefficientS,reflectionCoefficientP);
       auto t2 = std::chrono::high_resolution_clock::now();
       double duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-
-      h1RTduration->Fill(duration/1000);
       
-      vector <double> output;
-      if(fabs(dummy[1]-TotalHorizontalDistance)<10){
-	output.push_back(dummy[0]);
-	output.push_back((dummy[1]));
-	output.push_back(dummy[5]);
-	output.push_back(dummy[6]);
-	output.push_back(dummy[10]);
-	output.push_back(dummy[2]);
-	output.push_back(dummy[12]);
-	output.push_back(dummy[13]);	
-      }else{
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
-	output.push_back(-1000);
+      h1RTduration->Fill(duration/1000);
+
+      double rtresult=opticalPathLengthInIce/100;//horizontalDistanceToIntersectionPoint/100;//launchAngleB*(180.0/MultiRayAirIceRefraction::pi);
+      if(checksol==false || std::isnan(rtresult)==true || rtresult>1e10 ){
+	rtresult=-1000;
+      }
+      
+      ////For recording how much time the process took
+      double opticalPathLengthInIceB;
+      double opticalPathLengthInAirB;
+      double geometricalPathLengthInIceB;
+      double geometricalPathLengthInAirB;
+      double launchAngleB;
+      double horizontalDistanceToIntersectionPointB;
+      double reflectionCoefficientSB;
+      double reflectionCoefficientPB;
+      
+      auto t1b = std::chrono::high_resolution_clock::now();
+      checksol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table( hR*100,  TotalHorizontalDistance*100, AntennaDepth*100,  IceLayerHeight*100, 0, opticalPathLengthInIceB, opticalPathLengthInAirB, geometricalPathLengthInIceB, geometricalPathLengthInAirB, launchAngleB,horizontalDistanceToIntersectionPointB,reflectionCoefficientSB,reflectionCoefficientPB);
+     
+      auto t2b = std::chrono::high_resolution_clock::now();                                      
+      double Duration = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b - t1b ).count(); 
+      double interresult=opticalPathLengthInIceB/100;//horizontalDistanceToIntersectionPointB/100;//launchAngleB*(180.0/MultiRayAirIceRefraction::pi);
+
+      
+      if(checksol==false || std::isnan(interresult)==true || interresult>1e10 ){
+	interresult=-1000;
       }
 
-      int rtParameter=2; //0 is AirTxHeight, 1 is THD, 2 is Optical Path in Ice, 3 is Optical Path in Air, 4 is Launch Angle in Air, 5 is THD Air, 6 is Refl Coeff S, 7 is Refl Coeff For P 
-
-      ////For recording how much time the process took
-      auto t1b = std::chrono::high_resolution_clock::now();
-      double NewZValue=MultiRayAirIceRefraction::GetInterpolatedValue(hR, thR, rtParameter);
-      auto t2b = std::chrono::high_resolution_clock::now();                                      
-      double Duration = std::chrono::duration_cast<std::chrono::nanoseconds>( t2b - t1b ).count();
-      
-      double rtresult=output[rtParameter];
-      double interresult=NewZValue;
-
-      output.clear();
-      
       if(rtresult!=-1000){
-	launchtest->SetPoint(count1,(hR),thR,output[4]-thR);
 	h2b->Fill((hR),thR,rtresult);
 	gr2b->SetPoint(count1,(hR),thR,rtresult);
 	count1++;
@@ -118,7 +127,7 @@ void RunMultiRayCode_loop()
       if(interresult<minc && interresult!=-1000){
         minc=interresult;
       }
-
+      
       if(interresult!=-1000){
 	h2c->Fill((hR),thR,interresult);
 	gr2c->SetPoint(count2,(hR),thR,interresult);
@@ -133,14 +142,15 @@ void RunMultiRayCode_loop()
 	h1error_dRR->Fill((fabs(rtresult-interresult)/rtresult) *100);
 	h1error->Fill(fabs(rtresult-interresult));
       }
-
+	
+	
       if(rtresult==-1000 && interresult!=-1000){
-	cout<<count4<<" we have a problem! "<<hR<<" "<<thR<<" "<<rtresult<<" "<<interresult<<endl;
+	//cout<<count4<<" we have a problem! "<<hR<<" "<<thR<<" "<<rtresult<<" "<<interresult<<endl;
 	count4++;
       }
       
       //if(fabs(rtresult-interresult)>100){
-      //cout<<hR<<" "<<thR<<" "<<rtresult<<" "<<interresult<<endl;
+      //cout<<ih<<" "<<ith<<" "<<hR<<" "<<thR<<" "<<rtresult<<" "<<interresult<<" THD "<<TotalHorizontalDistance<<endl;
       //}
       
     }
@@ -222,7 +232,6 @@ void RunMultiRayCode_loop()
   // //c2e->SetLogy();
   // c2f->SetGridx();
   // c2f->SetGridy();
-  // launchtest->Draw("cont4z");
   // //c2e->SaveAs("OP_Ice_Duration_hist.png");
   
   TCanvas *c1=new TCanvas("c1","c1");
@@ -249,12 +258,11 @@ void RunMultiRayCode_loop()
   h1error_dRR_cum->Draw();
   c1->SaveAs("OP_Ice_All.png");
 
-  TCanvas *c3=new TCanvas("c3","c3");
-  c3->cd();
-  c3->SetLogy();
-  c3->SetGridx();
-  c3->SetGridy();
-  h1RTduration->Draw("");
-  
+  // TCanvas *c3=new TCanvas("c3","c3");
+  // c3->cd();
+  // c3->SetLogy();
+  // c3->SetGridx();
+  // c3->SetGridy();
+  // h1RTduration->Draw("");
   
 }
