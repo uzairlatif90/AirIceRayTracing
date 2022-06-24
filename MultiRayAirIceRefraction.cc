@@ -1582,7 +1582,10 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDe
   MultiRayAirIceRefraction::TotalStepsTh_O=(MultiRayAirIceRefraction::GridWidthTh/MultiRayAirIceRefraction::GridStepSizeTh_O)+1;
 
   MultiRayAirIceRefraction::GridPoints=MultiRayAirIceRefraction::TotalStepsH_O*MultiRayAirIceRefraction::TotalStepsTh_O;
- 
+
+  GridPositionH.resize(MultiRayAirIceRefraction::TotalStepsH_O);
+  GridPositionTh.resize(MultiRayAirIceRefraction::TotalStepsTh_O);
+    
   //////For recording how much time the process took
   auto t1b = std::chrono::high_resolution_clock::now();  
   
@@ -1599,6 +1602,9 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDe
       if(ith==TotalStepsTh_O-1){
 	th=GridStopTh;
       }      
+
+      GridPositionH[ih]=h;
+      GridPositionTh[ith]=th;
       
       double TotalHorizontalDistance=(h-IceLayerHeight+AntennaDepth)*tan((180-th)*(MultiRayAirIceRefraction::pi/180.0));
       double dummy[20];
