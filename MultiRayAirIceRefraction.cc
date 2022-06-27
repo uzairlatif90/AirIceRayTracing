@@ -1551,8 +1551,8 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   dummy[9]=PropagationTimeAir;
   dummy[10]=LaunchAngleAir;
   dummy[11]=IncidentAngleonIce;
-  dummy[12]=MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
-  dummy[13]=MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+  dummy[12]=sqrt(1-MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
+  dummy[13]=sqrt(1-MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
   dummy[14]=TotalGeometricPathinAir;
   dummy[15]=TotalGeometricPathinIce;
   //std::cout<<"in raytracer "<<dummy[0]<<" "<<dummy[1]<<" "<<dummy[2]<<" "<<dummy[3]<<std::endl;
@@ -1889,8 +1889,8 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
   dummy[11]=RayLaunchAngleInAir;
   dummy[12]=IncidentAngleonIce;
   dummy[13]=RecievdAngleInIce;
-  dummy[14]=MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
-  dummy[15]=MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+  dummy[14]=sqrt(1-MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
+  dummy[15]=sqrt(1-MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
   dummy[16]=TotalGeometricPathInAir;
   dummy[17]=TotalGeometricPathInIce;
 }
