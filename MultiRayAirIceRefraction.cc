@@ -6,7 +6,7 @@ double MaxAirTxHeight=0;
 double MinAirTxHeight=0;
 
 ////Multidimensional vector to store data read in from the antenna tables for interpolation puprposes
-std::vector<std::vector<std::vector <double>>> AllTableAllAntData;
+std::vector<std::vector<std::vector <float>>> AllTableAllAntData;
 
 ////Set the variables for the for loop that will loop over the launch angle values. All values are in degrees
 double AngleStepSize=0.1;
@@ -242,8 +242,10 @@ double MultiRayAirIceRefraction::Getnz_air(double z){
   return MultiRayAirIceRefraction::A_air+MultiRayAirIceRefraction::GetB_air(zabs)*exp(-MultiRayAirIceRefraction::GetC_air(zabs)*zabs);
 }
 
-////E-feild Power Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+
+/* E-feild Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflection coefficient. The transmission coefficient is t=1+r */
 double MultiRayAirIceRefraction::Refl_S(double thetai, double IceLayerHeight){
+
   double Nair=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
   double Nice=MultiRayAirIceRefraction::Getnz_ice(0); 
   double n1=Nair;
@@ -252,28 +254,66 @@ double MultiRayAirIceRefraction::Refl_S(double thetai, double IceLayerHeight){
   double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
   double num=n1*cos(thetai)-n2*sqterm;
   double den=n1*cos(thetai)+n2*sqterm;
-  double RS=(num*num)/(den*den);
-  if(isnan(RS)){
-    RS=1;
+  double rS=(num/den);
+
+  if(std::isnan(rS)){
+    rS=1;
   }
-  return (RS);
+  return (rS);
 }
 
-////E-feild Power Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
-double MultiRayAirIceRefraction::Refl_P(double thetai, double IceLayerHeight){
+double MultiRayAirIceRefraction::Trans_S(double thetai, double IceLayerHeight){
+
   double Nair=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
   double Nice=MultiRayAirIceRefraction::Getnz_ice(0); 
   double n1=Nair;
   double n2=Nice;
   
   double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
+  double num=n1*cos(thetai)-n2*sqterm;
+  double den=n1*cos(thetai)+n2*sqterm;
+  double tS=1+(num/den);
+
+  if(std::isnan(tS)){
+    tS=0;
+  }
+  return (tS);
+}
+
+/* E-feild Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflection coeffient. The transmission coefficient is t=(n_1/n_2)*(1+r) */
+double MultiRayAirIceRefraction::Refl_P(double thetai, double IceLayerHeight){
+   
+  double Nair=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
+  double Nice=MultiRayAirIceRefraction::Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+
+  double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
   double num=n1*sqterm-n2*cos(thetai);
   double den=n1*sqterm+n2*cos(thetai);
-  double RP=(num*num)/(den*den);
-  if(isnan(RP)){
-    RP=1;
+  double rP=-(num)/(den);
+  if(std::isnan(rP)){
+    rP=1;
   }
-  return (RP);
+  return (rP);
+}
+
+double MultiRayAirIceRefraction::Trans_P(double thetai, double IceLayerHeight){
+   
+  double Nair=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
+  double Nice=MultiRayAirIceRefraction::Getnz_ice(0); 
+  double n1=Nair;
+  double n2=Nice;
+
+  double sqterm=sqrt(1-pow((n1/n2)*(sin(thetai)),2));
+  double num=n1*sqterm-n2*cos(thetai);
+  double den=n1*sqterm+n2*cos(thetai);
+  double tP=(1-(num/den))*(n1/n2);
+
+  if(std::isnan(tP)){
+    tP=0;
+  }
+  return (tP);
 }
 
 ////Use GSL minimiser which uses Brent's Method to find root for a given function
@@ -448,7 +488,7 @@ double MultiRayAirIceRefraction::GetRayGeometricPath(double A, double RxDepth, d
     params3a = {A, MultiRayAirIceRefraction::GetB_air(RxDepth), -MultiRayAirIceRefraction::GetC_air(RxDepth), MultiRayAirIceRefraction::spedc, Lvalue,1};
     params3b = {A, MultiRayAirIceRefraction::GetB_air(TxDepth), -MultiRayAirIceRefraction::GetC_air(TxDepth), MultiRayAirIceRefraction::spedc, Lvalue,1};
   }
-  double RayGeometricPath=+MultiRayAirIceRefraction::fpathD(RxDepth,&params3a)-MultiRayAirIceRefraction::fpathD(TxDepth,&params3b);
+  double RayGeometricPath=MultiRayAirIceRefraction::fpathD(RxDepth,&params3a)-MultiRayAirIceRefraction::fpathD(TxDepth,&params3b);//0
   if(AirOrIce==1){
     RayGeometricPath*=-1;
   }
@@ -720,7 +760,6 @@ double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, d
     ////dont forget to delete the pointer!
     
   }
-  //cout<<"GeoPath is "<<path<<endl;
   
   for(int i=0;i<Lvalue.size();i++){
     output[0+i*5]=TotalHorizontalDistance[i];
@@ -847,7 +886,7 @@ int MultiRayAirIceRefraction::MakeAtmosphere(){
 }
 
 ////This function uses my raw code to calculate values for CoREAS. Since its directly using the minimiser to calculate launch angles and distances it is slightly slower than its _Table version.
-bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary, double IceLayerHeight, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& reflectionCoefficientS, double& reflectionCoefficientP){
+bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary, double IceLayerHeight, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& transmissionCoefficientS, double& transmissionCoefficientP, double &RecievedAngleInIce){
   
   double AirTxHeight=SrcHeightASL/100;////Height of the source
   double HorizontalDistance=HorizontalDistanceToRx/100;////Horizontal distance
@@ -856,19 +895,14 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
 
   double thR=0;
   if(AntennaDepth<0){
-    //324 3124 -3000 +200
-    //cout<<"in here 1 "<<AirTxHeight-IceLayerHeight-AntennaDepth<<" "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" atan "<<HorizontalDistance<<" "<<(AirTxHeight-IceLayerHeight-AntennaDepth)<<" "<<HorizontalDistance/(AirTxHeight-IceLayerHeight-AntennaDepth)<<endl;
     thR=180-(atan( HorizontalDistance/(AirTxHeight-IceLayerHeight-AntennaDepth) )*(180.0/MultiRayAirIceRefraction::pi) );
   }
   if(AntennaDepth>=0){
-    //cout<<"in here 2 "<<AirTxHeight<<" "<<(IceLayerHeight+AntennaDepth)<<endl;
     thR=180-(atan( HorizontalDistance/(AirTxHeight-(IceLayerHeight+AntennaDepth)) )*(180.0/MultiRayAirIceRefraction::pi) );
   }
 
-  //cout<<"in here too 1"<<endl;
   double dummy[20];
   MultiRayAirIceRefraction::Air2IceRayTracing(AirTxHeight, HorizontalDistance, IceLayerHeight, AntennaDepth,thR, dummy);
-  //cout<<"in here too 2"<<endl;
 
   opticalPathLengthInIce=dummy[5]*100;
   opticalPathLengthInAir=dummy[6]*100;
@@ -877,23 +911,22 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
   
   launchAngle=dummy[10]*(MultiRayAirIceRefraction::pi/180);
   horizontalDistanceToIntersectionPoint=dummy[2]*100;
-  reflectionCoefficientS=dummy[12];
-  reflectionCoefficientP=dummy[13];
+  transmissionCoefficientS=dummy[12];
+  transmissionCoefficientP=dummy[13];
+  RecievedAngleInIce=dummy[11];
   
   bool CheckSolution=false;
   double checkminimisation=dummy[1]-HorizontalDistance;
 
   //cout<<"raytrace arguments are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<AntennaDepth<<" "<<IceLayerHeight<<" "<<thR<<endl;
-  //cout<<"in here too 3"<<endl;
   if((fabs(dummy[1]-HorizontalDistance)/HorizontalDistance<0.01 && HorizontalDistance<=100) || (fabs(dummy[1]-HorizontalDistance)<1 && HorizontalDistance>100)){
     CheckSolution=true;
   }
   if(dummy[1]<0){
     CheckSolution=false;
   }
-  //cout<<"in here too 4"<<endl;
 
-  //cout<<"raytrace results are "<<dummy[1]<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<reflectionCoefficientS<<" "<<reflectionCoefficientP<<" "<<CheckSolution<<endl;
+  //cout<<"raytrace results are "<<dummy[1]<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<transmissionCoefficientS<<" "<<transmissionCoefficientP<<" "<<CheckSolution<<endl;
   
   return CheckSolution;
 
@@ -1045,11 +1078,9 @@ int MultiRayAirIceRefraction::FindClosestTHD(double ParValue, int StartIndex, in
       //cout<<"the initial values are  "<<AllTableAllAntData[AntennaNumber][1][StartIndex]<<" "<<AllTableAllAntData[AntennaNumber][1][MidIndex]<<" "<<AllTableAllAntData[AntennaNumber][1][EndIndex]<<" "<<ParValue<<endl;
       //cout<<"the first start and stop index are "<<StartIndex<<" "<<MidIndex<<" "<<EndIndex<<endl;
       if(AllTableAllAntData[AntennaNumber][1][MidIndex]-ParValue>0){
-	//cout<<"we are here 1 "<<endl;
 	StartIndex=MidIndex;
       }
       if(AllTableAllAntData[AntennaNumber][1][MidIndex]-ParValue<0){
-	//cout<<"we are here 2 "<<endl;
 	EndIndex=MidIndex;
       }
     }
@@ -1083,10 +1114,7 @@ int MultiRayAirIceRefraction::FindClosestTHD(double ParValue, int StartIndex, in
 
 ////Interpolate the value of the given parameter for a given TxHeight and THD
 int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHeight, double TotalHorizontalDistance, double IceLayerHeight, double &AirTxHeight1, double Par1[20],double &AirTxHeight2, double Par2[20]){
-
-  //cout<<"inside interpolator"<<endl;
-  //std::cout<<" "<<std::endl;
-
+ 
   //cout<<"arguments to interpolator are "<<AntennaNumber<<" "<<AirTxHeight<<" "<<TotalHorizontalDistance<<" "<<IceLayerHeight<<endl;
   
   int TotalTableEntries=AllTableAllAntData[AntennaNumber][0].size()-1;
@@ -1104,21 +1132,14 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
 
   ////Find out the AirTxheight1 bin range for the given Tx height
   FindClosestAirTxHeight(AirTxHeight, startindex[0], endindex[0], closestvalue[0],startindex[2], endindex[2], closestvalue[2], AntennaNumber);
-
-  //cout<<" FindClosestAirTxHeight: IceLayerHeight "<<IceLayerHeight<<" AirTxHeight "<<AirTxHeight<<" "<<0<<" TotalTableEntries "<<TotalTableEntries<<" startindex[0] "<<startindex[0]<<" endindex[0] "<<endindex[0]<<" closestvalue[0] "<<closestvalue[0]<<" AntennaNumber "<<AntennaNumber<<endl;
   
   ////Set the first Tx height
   AirTxHeight1=AllTableAllAntData[AntennaNumber][0][startindex[0]];
-
-  //cout<<"AirTxHeight1 "<<AirTxHeight1<<endl;
   
   ////Find the maximum and minimum possible values of THD for AirTxHeight1. If given THD from the user is in this range then do interpolation otherwise we have to do extrapolation
   MaxTotalHorizontalDistance=AllTableAllAntData[AntennaNumber][1][startindex[0]];
   MinTotalHorizontalDistance=AllTableAllAntData[AntennaNumber][1][endindex[0]];
 
-  //cout<<" MaxTotalHorizontalDistance "<<MaxTotalHorizontalDistance<<" MinTotalHorizontalDistance "<<MinTotalHorizontalDistance<<endl;
-  
-  //cout<<" minimum distance is 1 :"<<MinTotalHorizontalDistance<<" "<<AllTableAllAntData[AntennaNumber][1][endindex[0]+1]<<endl;
   if(TotalHorizontalDistance<=MaxTotalHorizontalDistance){
     ////Find out the THD bin range for the given THD and AirTxHeight1
     FindClosestTHD(TotalHorizontalDistance, startindex[0], endindex[0], startindex[1], endindex[1], closestvalue[1], AntennaNumber);
@@ -1126,7 +1147,7 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
     if(closestvalue[1]!=0){////If the given THD does not match a bin value
       x1=AllTableAllAntData[AntennaNumber][1][startindex[1]];
       x2=AllTableAllAntData[AntennaNumber][1][endindex[1]];
-      for(int ipar=0;ipar<9;ipar++){
+      for(int ipar=0;ipar<10;ipar++){
 	y1=AllTableAllAntData[AntennaNumber][1+ipar][startindex[1]];
 	y2=AllTableAllAntData[AntennaNumber][1+ipar][endindex[1]];
 	Par1[ipar]=oneDLinearInterpolation(TotalHorizontalDistance,x1,y1,x2,y2);
@@ -1135,7 +1156,7 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
     if(closestvalue[1]==0){////if the value of THD matches exactly the value of one the values in the table then go into this if condition and set the the start and stop indexes to be the same and there is no interpolation needed
       startindex[1]=startindex[1]+1;
       endindex[1]=startindex[1];
-      for(int ipar=0;ipar<9;ipar++){
+      for(int ipar=0;ipar<10;ipar++){
 	Par1[ipar]=AllTableAllAntData[AntennaNumber][1+ipar][startindex[1]];
       }
     }
@@ -1150,25 +1171,17 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
   //     double DistancePercentageLimit=fabs(THDLimit-MaxTotalHorizontalDistance)/DistanceRange;
   //     double DistancePercentage=fabs(TotalHorizontalDistance-MaxTotalHorizontalDistance)/DistanceRange;
   //     if(DistancePercentage<DistancePercentageLimit){
-  // 	for(int ipar=0;ipar<7;ipar++){
+  // 	for(int ipar=0;ipar<10;ipar++){
   // 	  Par1[ipar]=Extrapolate(1+ipar, startindex[0], TotalHorizontalDistance, AntennaNumber);
   // 	}
   //     }else{
-	for(int ipar=0;ipar<9;ipar++){
+	for(int ipar=0;ipar<10;ipar++){
 	  Par1[ipar]=-pow(10,9);
 	}
   //     }
   //   }
     
   }
-  
-  // ////Find out the Txheight2 bin range for the given Tx height
-  // startindex[2]=startindex[0]+(LoopStopAngle-LoopStartAngle)*(1.0/AngleStepSize)+1;
-  // endindex[2]=startindex[2]+(LoopStopAngle-LoopStartAngle)*(1.0/AngleStepSize);
-  
-  // for(int i=startindex[2]-2;i<endindex[2]+2;i++){
-  //   cout<<"check values too  "<<i<<" "<<AllTableAllAntData[AntennaNumber][0][i]<<" "<<AllTableAllAntData[AntennaNumber][1][i]<<endl;
-  // }
   
   if(closestvalue[0]!=0 && AirTxHeight>MinAirTxHeight && startindex[2]<TotalTableEntries){////If the AirTxHeight does not exactly match a table value and AirTxHeight1 is not equal to AirTxHeight2 AND AirTxHeight1 is not the minimum possible height in the table
 
@@ -1177,17 +1190,17 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
     ////Find the maximum and minimum possible values of THD for AirTxHeight2. If given THD from the user is in this range then do interpolation otherwise we have to do extrapolation
     MaxTotalHorizontalDistance=AllTableAllAntData[AntennaNumber][1][startindex[2]];
     MinTotalHorizontalDistance=AllTableAllAntData[AntennaNumber][1][endindex[2]];
-    //cout<<"part 2 "<<TotalHorizontalDistance<<" MaxTotalHorizontalDistance "<<MaxTotalHorizontalDistance<<" MinTotalHorizontalDistance "<<MinTotalHorizontalDistance<<endl;
-    //cout<<" minimum distance is 2 :"<<MinTotalHorizontalDistance<<" "<<AllTableAllAntData[AntennaNumber][1][endindex[2]+1]<<endl;
+
     if(TotalHorizontalDistance<=MaxTotalHorizontalDistance){
-      //cout<<"we are here now "<<endl;
       
       FindClosestTHD(TotalHorizontalDistance, startindex[2], endindex[2], startindex[3], endindex[3], closestvalue[2], AntennaNumber);
        
       if(closestvalue[2]!=0){////If the given THD does not match a bin value
+
 	x1=AllTableAllAntData[AntennaNumber][1][startindex[3]];
 	x2=AllTableAllAntData[AntennaNumber][1][endindex[3]];
-	for(int ipar=0;ipar<9;ipar++){
+
+	for(int ipar=0;ipar<10;ipar++){
 	  y1=AllTableAllAntData[AntennaNumber][1+ipar][startindex[3]];
 	  y2=AllTableAllAntData[AntennaNumber][1+ipar][endindex[3]];
 	  Par2[ipar]=oneDLinearInterpolation(TotalHorizontalDistance,x1,y1,x2,y2);
@@ -1196,14 +1209,13 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
       if(closestvalue[2]==0){////if the value of THD matches exactly the value of one the values in the table then go into this if condition and set the the start and stop indexes to be the sohame and there is no interpolation needed
 	startindex[3]=startindex[3]+1;
 	endindex[3]=startindex[3];
-	for(int ipar=0;ipar<9;ipar++){
+	for(int ipar=0;ipar<10;ipar++){
 	  Par2[ipar]=AllTableAllAntData[AntennaNumber][1+ipar][startindex[3]];
 	}
       }
 
     }else{///Do extrapolation as the given THD from the user does NOT lie in the range of values
       //   ////check if the total horizontal distance is outside 100% of the whole total horizontal distance range for that Tx height. If that is the case then do not extrapolate and return a no solution number
-      //cout<<" we are here 2 "<<endl;
     
       //   double DistanceRange=fabs(MaxTotalHorizontalDistance-MinTotalHorizontalDistance);
       //   if(TotalHorizontalDistance>MaxTotalHorizontalDistance){
@@ -1215,30 +1227,26 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
       // 	    Par2[ipar]=Extrapolate(1+ipar, startindex[2], TotalHorizontalDistance, AntennaNumber);
       // 	  }
       // 	}else{
-      for(int ipar=0;ipar<9;ipar++){
+      for(int ipar=0;ipar<10;ipar++){
 	Par2[ipar]=-pow(10,9);
       }
     }
     //   }
       
     // }
-    //cout<<" we are here 3 "<<endl;
   }else{////If AirTxHeight is exactly equal to a bin value then AirTxHeight1 and AirTxHeight2 are equal and we dont need to do interpolation for AirTxHeight2 as we already have done it for AirTxHeight1
     ////Also if AirTxHeight1 is equal to the minimum possible height then stop right there and dont the interpolation for AirTxHeight2
-    //cout<<" we are here 4 "<<endl;
     AirTxHeight2=AirTxHeight1;
-    for(int ipar=0;ipar<9;ipar++){
+    for(int ipar=0;ipar<10;ipar++){
       Par2[ipar]=Par1[ipar];
     }
   }
-
-  //cout<<" we are here 5 "<<endl;
   
   return 0; 
 }
 
 ////This functions reads in the antenna tables and interpolates (or extrapolates) from the table to provide output value for raytracing
-bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary, double IceLayerHeight, int AntennaNumber, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& reflectionCoefficientS, double& reflectionCoefficientP){
+bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary, double IceLayerHeight, int AntennaNumber, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& transmissionCoefficientS, double& transmissionCoefficientP, double &RecievedAngleInIce){
 
   double AirTxHeight=SrcHeightASL/100;////Height of the source
   double HorizontalDistance=HorizontalDistanceToRx/100;////Horizontal distance
@@ -1249,8 +1257,8 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
   double opticalPathLengthInAirB=0;
   double launchAngleB=0;
   double horizontalDistanceToIntersectionPointB=0;
-  double reflectionCoefficientSB=0;
-  double reflectionCoefficientPB=0;
+  double transmissionCoefficientSB=0;
+  double transmissionCoefficientPB=0;
   
   // double thR=180-(atan( HorizontalDistance/(AirTxHeight-IceLayerHeight+AntennaDepth) )*(180.0/MultiRayAirIceRefraction::pi) );
   //std::cout<<"Table values "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<std::endl;
@@ -1268,8 +1276,8 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
   //   opticalPathLengthInAir=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 3)*100;
   //   launchAngle=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 4)*(MultiRayAirIceRefraction::pi/180);
   //   horizontalDistanceToIntersectionPoint=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 5)*100;
-  //   reflectionCoefficientS=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 6);
-  //   reflectionCoefficientP=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 7);
+  //   transmissionCoefficientS=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 6);
+  //   transmissionCoefficientP=MultiRayAirIceRefraction::GetInterpolatedValue(AirTxHeight, thR, 7);
    
   //   if(THD<0.001 || std::isnan(THD)==true){
   //     CheckSolution=false;
@@ -1278,9 +1286,17 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
   //   CheckSolution=false;
   // }
 
-  // //std::cout<<"results are "<<CheckSolution<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<reflectionCoefficientS<<" "<<reflectionCoefficientP<<" params are "<<HorizontalDistance<<" "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" thR "<<thR<<std::endl;
+  // //std::cout<<"results are "<<CheckSolution<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<transmissionCoefficientS<<" "<<transmissionCoefficientP<<" params are "<<HorizontalDistance<<" "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" thR "<<thR<<std::endl;
+  
+  //std::cout<<"Antenna Number is "<<AntennaNumber<<" "<<AntennaTableAlreadyMade.size()<< std::endl;
+  for(int j=0;j<AntennaTableAlreadyMade.size();j++){
+    if(AntennaDepths[AntennaNumber]==AntennaDepths[AntennaTableAlreadyMade[j]]){
+      AntennaNumber=j;
+    }
+  }
 
-  //AntennaNumber=0;
+  //std::cout<<"Using Antenna "<<AntennaNumber<<std::endl;
+  //std::cout<<" "<<std::endl;
   bool CheckSolution=true;  
    
     int TotalTableEntries=AllTableAllAntData[AntennaNumber][0].size()-1;
@@ -1289,23 +1305,21 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
     
     double x1=0,x2=0,y1=0,y2=0;
     double AirTxHeight1,AirTxHeight2;
-    double Par1[10];
-    double Par2[10];
-    double ParInterpolatedValues[10];
+    double Par1[15];
+    double Par2[15];
+    double ParInterpolatedValues[15];
     ///0 is OpticalPathIce
     ///1 is OpticalPathAir
     ///2 is LaunchAngleAir
     ///3 is THDAir
 
     if(AirTxHeight<=MaxAirTxHeight && AirTxHeight>=MinAirTxHeight && AirTxHeight>0){
-      //cout<<"in here "<<endl;
    
       GetParValues(AntennaNumber,AirTxHeight,HorizontalDistance,IceLayerHeight,AirTxHeight1,Par1,AirTxHeight2,Par2);
 
-      //cout<<"we are here 6"<<endl;
       x1=AirTxHeight1;
       x2=AirTxHeight2;
-      for(int ipar=0;ipar<9;ipar++){
+      for(int ipar=0;ipar<10;ipar++){
         y1=Par1[ipar];
         y2=Par2[ipar];
         double GetInterpolatedParValue=0;
@@ -1323,13 +1337,12 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
 	  }
 
 	  if(y2==-pow(10,9) && y1==-pow(10,9)){
-	    ipar=8;
+	    ipar=9;
 	  }
 
         }
         ParInterpolatedValues[ipar]=GetInterpolatedParValue;
       }
-      //cout<<" we are here 7 "<<endl;
     
     }
     
@@ -1340,13 +1353,14 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
     geometricalPathLengthInAir=ParInterpolatedValues[7]*100;
     launchAngle=ParInterpolatedValues[3]*(MultiRayAirIceRefraction::pi/180);
     horizontalDistanceToIntersectionPoint=ParInterpolatedValues[4]*100;
-    reflectionCoefficientS=ParInterpolatedValues[5];
-    reflectionCoefficientP=ParInterpolatedValues[6];
-    //cout<<"inter values are "<<ParInterpolatedValues[0]<<" "<<ParInterpolatedValues[1]<<" "<<ParInterpolatedValues[2]<<" "<<ParInterpolatedValues[3]<<" "<<ParInterpolatedValues[4]<<" "<<ParInterpolatedValues[5]<<" "<<ParInterpolatedValues[6]<<" "<<ParInterpolatedValues[7]<<" "<<ParInterpolatedValues[8]<<endl;
+    transmissionCoefficientS=ParInterpolatedValues[5];
+    transmissionCoefficientP=ParInterpolatedValues[6];
+    RecievedAngleInIce=ParInterpolatedValues[9]*(MultiRayAirIceRefraction::pi/180);
+    
+    //std::cout<<"inter values are "<<ParInterpolatedValues[0]<<" "<<ParInterpolatedValues[1]<<" "<<ParInterpolatedValues[2]<<" "<<ParInterpolatedValues[3]<<" "<<ParInterpolatedValues[4]<<" "<<ParInterpolatedValues[5]<<" "<<ParInterpolatedValues[6]<<" "<<ParInterpolatedValues[7]<<" "<<ParInterpolatedValues[8]<<std::endl;
     bool CheckSolBool=false;
     if( (y1==-pow(10,9) && y2!=-pow(10,9)) || (y2==-pow(10,9) && y1!=-pow(10,9)) ){
-      CheckSolBool=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(SrcHeightASL*100, HorizontalDistanceToRx*100, RxDepthBelowIceBoundary*100, IceLayerHeight*100, geometricalPathLengthInIce, geometricalPathLengthInAir, opticalPathLengthInIce, opticalPathLengthInAir, launchAngle, horizontalDistanceToIntersectionPoint,reflectionCoefficientS,reflectionCoefficientP);
-      //cout<<"in here 2 "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<y1<<" "<<y2<<endl;
+      CheckSolBool=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(SrcHeightASL*100, HorizontalDistanceToRx*100, RxDepthBelowIceBoundary*100, IceLayerHeight*100, geometricalPathLengthInIce, geometricalPathLengthInAir, opticalPathLengthInIce, opticalPathLengthInAir, launchAngle, horizontalDistanceToIntersectionPoint,transmissionCoefficientS,transmissionCoefficientP,RecievedAngleInIce);
     }
 
     if(y2==-pow(10,9) && y1==-pow(10,9)){
@@ -1378,7 +1392,6 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
       CheckSolution=false;
     }
     
-    //std::cout<<"results 1 "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<CheckSolution<<" "<<THD<<" "<<HorizontalDistance<<std::endl;
     if(CheckSolution==false){
       opticalPathLengthInIce=0;
       opticalPathLengthInAir=0;
@@ -1393,7 +1406,6 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
 }
 
 void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double HorizontalDistance, double IceLayerHeight,double AntennaDepth, double StraightAngle, double dummy[20]){
-  //cout<<"max layers are "<<MultiRayAirIceRefraction::MaxLayers<<endl;
     
   //std::cout<<"parameters are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<std::endl;
   ////For recording how much time the process took
@@ -1402,13 +1414,11 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   gsl_function F1;
   struct MultiRayAirIceRefraction::MinforLAng_params params1;
   if(AntennaDepth>=0){
-    //cout<<"here 1 "<<endl;
     IceLayerHeight=AntennaDepth+IceLayerHeight;
     AntennaDepth=0;
     params1 = { AirTxHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};
   }
   if(AntennaDepth<0){
-    //cout<<"here 2 "<<endl;
     params1 = { AirTxHeight, IceLayerHeight, -AntennaDepth, HorizontalDistance};
   }
   F1.function = & MultiRayAirIceRefraction::MinimizeforLaunchAngle;
@@ -1420,7 +1430,7 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
 
   startanglelim=StraightAngle-16;
   endanglelim=StraightAngle;
-  //cout<<"angles are "<<startanglelim<<" "<<endanglelim<<" "<<StraightAngle<<endl;
+
   if(startanglelim<90.001){
     startanglelim=90.001;
     ////Start opening up the angle limit range until the air minimisation function becomes undefined or gives out a nan. Then set the limits within that range.
@@ -1443,42 +1453,34 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
       }
     }
   }
-  //cout<<"angles are "<<startanglelim<<" "<<endanglelim<<" "<<StraightAngle<<endl;
+  
   if(endanglelim<90.001 && endanglelim>90.00){
     //startanglelim=90.05;
     endanglelim=90.05;
   }
   //cout<<"angles are "<<startanglelim<<" "<<endanglelim<<" "<<StraightAngle<<endl;
-  //cout<<"in here too too 1"<<endl;
   
   //auto t1b_air = std::chrono::high_resolution_clock::now();
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
   double LaunchAngleAir= MultiRayAirIceRefraction::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
   //std::cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleAir<<" deg"<<std::endl;
-
-  //cout<<"in here too too 1a"<<endl;
   
   double * GetResultsAir= MultiRayAirIceRefraction::GetAirPropagationPar(LaunchAngleAir,AirTxHeight,IceLayerHeight);
-  // for(int i=0;i<5*MultiRayAirIceRefraction::MaxLayers+2;i++){
-  //   cout<<"check array B "<<i<<" "<<GetResultsAir[i]<<endl;
-  // }
+
   int FilledLayers=GetResultsAir[5*MultiRayAirIceRefraction::MaxLayers+1];
   double TotalHorizontalDistanceinAir=0;
   double PropagationTimeAir=0;
   double TotalGeometricPathinAir=0;
-  //cout<<"in here too too 1b"<<endl;
+  
   for(int i=0;i<FilledLayers;i++){
     TotalHorizontalDistanceinAir+=GetResultsAir[0+i*5];
     PropagationTimeAir+=GetResultsAir[3+i*5];
     TotalGeometricPathinAir+=GetResultsAir[4+i*5];
     //cout<<"check layers "<<i<<" "<<TotalGeometricPathinAir<<" "<<GetResultsAir[MultiRayAirIceRefraction::MaxLayers*i+4]<<" "<<MultiRayAirIceRefraction::MaxLayers*i+4<<" "<<GetResultsAir[3+i*MultiRayAirIceRefraction::MaxLayers]<<endl;
   }
-  //cout<<"in here too too 1c"<<endl;
   double Lvalue=GetResultsAir[2];
   double IncidentAngleonIce=GetResultsAir[1+(FilledLayers-1)*5];  
   delete [] GetResultsAir;
-
-  //cout<<"in here too too 2"<<endl;
   
   //auto t2b_air = std::chrono::high_resolution_clock::now();
   
@@ -1498,7 +1500,6 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   double TotalGeometricPathinIce=0;
 
   if(AntennaDepth<0){
-    //cout<<"here 3 "<<endl;
     double * GetResultsIce=MultiRayAirIceRefraction::GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, -AntennaDepth,Lvalue);
     TotalHorizontalDistanceinIce=GetResultsIce[0];
     IncidentAngleonAntenna=GetResultsIce[1];
@@ -1508,8 +1509,6 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
     delete [] GetResultsIce;
   }
   //auto t2b_ice = std::chrono::high_resolution_clock::now();
-
-  //cout<<"in here too too 3"<<endl;
   
   // std::cout<<" "<<std::endl;
   // std::cout<<"***********Results for Ice************"<<std::endl;
@@ -1550,17 +1549,12 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   dummy[8]=PropagationTimeIce;
   dummy[9]=PropagationTimeAir;
   dummy[10]=LaunchAngleAir;
-  dummy[11]=IncidentAngleonIce;
-  dummy[12]=sqrt(1-MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
-  dummy[13]=sqrt(1-MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
+  dummy[11]=IncidentAngleonAntenna;//IncidentAngleonIce;
+  dummy[12]=MultiRayAirIceRefraction::Trans_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+  dummy[13]=MultiRayAirIceRefraction::Trans_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
   dummy[14]=TotalGeometricPathinAir;
   dummy[15]=TotalGeometricPathinIce;
-  //std::cout<<"in raytracer "<<dummy[0]<<" "<<dummy[1]<<" "<<dummy[2]<<" "<<dummy[3]<<std::endl;
-  //std::cout<<"in raytracer "<<dummy[0]<<" "<<dummy[1]<<" "<<dummy[5]<<" "<<dummy[6]<<" "<<dummy[10]<<" "<<dummy[2]<<" "<<dummy[12]<<" "<<dummy[13]<<std::endl;
-  // if(AirTxHeight==5001 && StraightAngle==114.4){
-  //   cout<<AirTxHeight<<" "<<StraightAngle<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" "<<(AirTxHeight-IceLayerHeight+AntennaDepth)*tan((180-StraightAngle)*(MultiRayAirIceRefraction::pi/180.0))<<endl;  
-  // cout<<dummy[0]<<" "<<dummy[1]<<" "<<dummy[5]<<" "<<dummy[6]<<" "<<dummy[10]<<" "<<dummy[2]<<" "<<dummy[12]<<" "<<dummy[13]<<endl;
-  // }
+
 }
 
 void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDepth){ 
@@ -1618,8 +1612,9 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDe
 	MultiRayAirIceRefraction::GridZValue[3].push_back(dummy[6]);//3 is Optical Path in Air
 	MultiRayAirIceRefraction::GridZValue[4].push_back(dummy[10]);//4 is Launch Angle in Air
 	MultiRayAirIceRefraction::GridZValue[5].push_back(dummy[2]);//5 is Total Horizontal Distance in Air
-	MultiRayAirIceRefraction::GridZValue[6].push_back(dummy[12]);//6 is Refl Coeff S
-	MultiRayAirIceRefraction::GridZValue[7].push_back(dummy[13]);//7 is Refl Coeff P
+	MultiRayAirIceRefraction::GridZValue[6].push_back(dummy[12]);//6 is Trans Coeff S
+	MultiRayAirIceRefraction::GridZValue[7].push_back(dummy[13]);//7 is Trans Coeff P
+	MultiRayAirIceRefraction::GridZValue[8].push_back(dummy[11]);//7 is Incident Angle on Ice
       }else{
 	MultiRayAirIceRefraction::GridZValue[0].push_back(-1000);
 	MultiRayAirIceRefraction::GridZValue[1].push_back(-1000);
@@ -1629,6 +1624,7 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDe
 	MultiRayAirIceRefraction::GridZValue[5].push_back(-1000);
 	MultiRayAirIceRefraction::GridZValue[6].push_back(-1000);
 	MultiRayAirIceRefraction::GridZValue[7].push_back(-1000);
+	MultiRayAirIceRefraction::GridZValue[8].push_back(-1000);
       }
     }
   }
@@ -1781,7 +1777,6 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
   ////Start loop over the atmosphere layers and analyticaly propagate the ray through the atmosphere
   //std::cout<<"Fitting the atmosphere refrative index profile with multiple layers and propogate the ray"<<std::endl;
   for(int ilayer=MultiRayAirIceRefraction::MaxLayers-SkipLayersAbove-1;ilayer>SkipLayersBelow-1;ilayer--){
-    //std::cout<<B_air<<std::endl;
     ////Set the starting height of the ray for propogation for that layer
     if(ilayer==MultiRayAirIceRefraction::MaxLayers-SkipLayersAbove-1){
       ////If this is the first layer then set the start height to be the height of the source
@@ -1868,8 +1863,6 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
   }
   //std::cout<<"Total horizontal distance travelled by the ray in ice is  "<<TotalHorizontalDistanceInIce<<std::endl;
       
-  //if(isnan(TotalHorizontalDistanceInAir)==false){
-	
   ////define dummy/temporary variables for storing data
   for(int idum=0;idum<18;idum++){
     dummy[idum]=0;
@@ -1889,8 +1882,8 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
   dummy[11]=RayLaunchAngleInAir;
   dummy[12]=IncidentAngleonIce;
   dummy[13]=RecievdAngleInIce;
-  dummy[14]=sqrt(1-MultiRayAirIceRefraction::Refl_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
-  dummy[15]=sqrt(1-MultiRayAirIceRefraction::Refl_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight));
+  dummy[14]=MultiRayAirIceRefraction::Trans_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
+  dummy[15]=MultiRayAirIceRefraction::Trans_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
   dummy[16]=TotalGeometricPathInAir;
   dummy[17]=TotalGeometricPathInIce;
 }
@@ -1902,11 +1895,10 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
     InIce=true;
   }
   if(AntennaDepth>=0){
-    //cout<<"we are here "<<endl;
     InIce=false;
   }
   
-  std::vector<std::vector <double>> AllTableData;
+  std::vector<std::vector <float>> AllTableData;
   
   ////convert cm to m
   AntennaDepth=AntennaDepth/100;
@@ -1935,23 +1927,23 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   if(InIce==true){
     LoopStopHeight=IceLayerHeight;
   }else{
-    //cout<<"we are here "<<endl;
     LoopStopHeight=IceLayerHeight+AntennaDepth;
   }
 
   TotalHeightSteps=floor((LoopStartHeight-LoopStopHeight)/HeightStepSize)+1;
   
   ////Temporary vectors
-  std::vector <double> temp1;
-  std::vector <double> temp2;
-  std::vector <double> temp3;
-  std::vector <double> temp4;
-  std::vector <double> temp5;
-  std::vector <double> temp6;
-  std::vector <double> temp7;
-  std::vector <double> temp8;
-  std::vector <double> temp9;
-  std::vector <double> temp10;
+  std::vector <float> temp1;
+  std::vector <float> temp2;
+  std::vector <float> temp3;
+  std::vector <float> temp4;
+  std::vector <float> temp5;
+  std::vector <float> temp6;
+  std::vector <float> temp7;
+  std::vector <float> temp8;
+  std::vector <float> temp9;
+  std::vector <float> temp10;
+  std::vector <float> temp11;
   
   int ifileentry=0;
   //cout<<" our final angle is "<<LoopStartAngle+AngleStepSize*TotalAngleSteps<<endl;
@@ -1963,7 +1955,6 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
       double dummy[20];
       for(int iang=0;iang<TotalAngleSteps;iang++){
 	RayLaunchAngleInAir=LoopStartAngle+AngleStepSize*iang;
-	//if(RayLaunchAngleInAir>=startanglelim){	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////Section for propogating the ray through the atmosphere
     
@@ -1985,10 +1976,14 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
 	temp4.push_back(dummy[6]);///OpticalPathAir 2
 	temp5.push_back(dummy[11]);///LaunchAngleAir 3         
 	temp6.push_back(dummy[3]);///THDAir 4
-	temp7.push_back(dummy[14]);///ReflectionCoefficientS 5
-	temp8.push_back(dummy[15]);///ReflectionCoefficientP 6
+	temp7.push_back(dummy[14]);///TransmissionCoefficientS 5
+	temp8.push_back(dummy[15]);///TransmissionCoefficientP 6
 	temp9.push_back(dummy[16]);///GeometricPathAir 7
 	temp10.push_back(dummy[17]);///GeometricPathIce 8
+	temp11.push_back(dummy[13]);///RecievedAngleInIce 9
+
+	//std::cout<<ifileentry<<" "<<RayLaunchAngleInAir<<" "<<AirTxHeight<<" "<<dummy[2]<<" "<<dummy[13]<<" "<<dummy[12]<<std::endl;
+	//temp12.push_back(dummy[13]*(MultiRayAirIceRefraction::pi/180));///RecievedAngleInIce 10
 	
 	//cout<<RayLaunchAngleInAir<<" "<<AirTxHeight<<" "<<LoopStopHeight<<" "<<AntennaDepth<<" "<<InIce<<" dummies are "<<dummy[16]<<" "<<dummy[17]<<endl;
 	
@@ -2008,6 +2003,7 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   AllTableData.push_back(temp8);
   AllTableData.push_back(temp9);
   AllTableData.push_back(temp10);
+  AllTableData.push_back(temp11);
 
   AllTableAllAntData.push_back(AllTableData);
   
