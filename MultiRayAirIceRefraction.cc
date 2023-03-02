@@ -913,7 +913,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
   horizontalDistanceToIntersectionPoint=dummy[2]*100;
   transmissionCoefficientS=dummy[12];
   transmissionCoefficientP=dummy[13];
-  RecievedAngleInIce=dummy[11];
+  RecievedAngleInIce=dummy[11]*(MultiRayAirIceRefraction::pi/180);
   
   bool CheckSolution=false;
   double checkminimisation=dummy[1]-HorizontalDistance;
@@ -2016,6 +2016,9 @@ int MultiRayAirIceRefraction::MakeRayTracingTable(double AntennaDepth, double Ic
   temp6.clear();
   temp7.clear();
   temp8.clear();  
+  temp9.clear();
+  temp10.clear();  
+  temp11.clear();
   
   auto t2b = std::chrono::high_resolution_clock::now();
   auto durationb = std::chrono::duration_cast<std::chrono::seconds>( t2b - t1b ).count();

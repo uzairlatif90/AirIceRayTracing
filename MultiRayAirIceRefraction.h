@@ -20,6 +20,9 @@
 
 #include <sys/time.h>
 
+extern std::vector <double> AntennaDepths;
+extern std::vector <int> AntennaTableAlreadyMade;
+
 namespace MultiRayAirIceRefraction{
   
   //static constexpr double pi=4.0*atan(1.0); /**< Gives back value of Pi */
@@ -30,11 +33,11 @@ namespace MultiRayAirIceRefraction{
   static std::vector <std::vector <double> > nh_data;////n(h) refractive index profile of the atmosphere as a function of height
   static std::vector <std::vector <double> > lognh_data;////log(n(h)-1) log of the refractive index profile of the atmosphere as a function of height subtracted by 1
   static std::vector <std::vector <double> > h_data;////height data
-
+  
   /********Stuff for Interpolation**********/
   static std::vector <double> GridPositionH;
   static std::vector <double> GridPositionTh; 
-  static std::vector <double> GridZValue[8];
+  static std::vector <double> GridZValue[10];
 
   static double GridStartTh=90.05;
   static double GridStopTh=179.95;
@@ -96,12 +99,15 @@ namespace MultiRayAirIceRefraction{
 
   ////Get the value of refractive index model for a given depth in air
   double Getnz_air(double z);
+
   
-  ////E-feild Power Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+  /* E-feild Fresnel coefficient for S-polarised wave which is perpendicular to the plane of propogation/incidence. This function gives you back the reflection coefficient. The transmittance is t=1+r */
   double Refl_S(double thetai, double IceLayerHeight);
+  double Trans_S(double thetai, double IceLayerHeight);
   
-  ////E-feild Power Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflectance. The transmittance is T=1-R
+  /* E-feild Fresnel coefficient for P-polarised wave which is parallel to the plane of propogation/incidence. This function gives you back the reflection coefficient. The transmittance is t=(n_1/n_2)*(1+R) */
   double Refl_P(double thetai, double IceLayerHeight);
+  double Trans_P(double thetai, double IceLayerHeight);
   
   ////Use GSL minimiser which uses Brent's Method to find root for a given function
   double FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance);
@@ -152,7 +158,7 @@ namespace MultiRayAirIceRefraction{
   double MinimizeforLaunchAngle(double x, void *params); 
  
   ////This function uses my raw code to calculate values for CoREAS. Since its directly using the minimiser to calculate launch angles and distances it is slightly slower than its _Table version.  
-  bool GetHorizontalDistanceToIntersectionPoint(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary,double IceLayerHeight, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint,  double& reflectionCoefficientS, double& reflectionCoefficientP);
+  bool GetHorizontalDistanceToIntersectionPoint(double SrcHeightASL, double HorizontalDistanceToRx,double RxDepthBelowIceBoundary,double IceLayerHeight, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint,  double& transmissionCoefficientS, double& transmissionCoefficientP, double &RecievedAngleInIce);
   
   ////Just a simple function for interpolating in 1 dimension between two points (xa,ya) and (xb,yb)
   double oneDLinearInterpolation(double x, double xa, double ya, double xb, double yb);
@@ -171,7 +177,7 @@ namespace MultiRayAirIceRefraction{
   int GetParValues(double AntennaNumber, double AirTxHeight, double TotalHorizontalDistance, double IceLayerHeight, double &AirTxHeight1, double Par1[10],double &AirTxHeight2, double Par2[10]);
 
   ////This functions reads in the antenna tables and interpolates (or extrapolates) from the table to provide output value for raytracing
-  bool GetHorizontalDistanceToIntersectionPoint_Table(double SrcHeightASL, double HorizontalDistanceToRx ,double RxDepthBelowIceBoundary, double IceLayerHeight, int AntennaNumber, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& reflectionCoefficientS, double& reflectionCoefficientP);
+  bool GetHorizontalDistanceToIntersectionPoint_Table(double SrcHeightASL, double HorizontalDistanceToRx ,double RxDepthBelowIceBoundary, double IceLayerHeight, int AntennaNumber, double& opticalPathLengthInIce, double& opticalPathLengthInAir, double& geometricalPathLengthInIce, double& geometricalPathLengthInAir, double& launchAngle, double& horizontalDistanceToIntersectionPoint, double& transmissionCoefficientS, double& transmissionCoefficientP,double &RecievedAngleInIce);
 
   void Air2IceRayTracing(double AirTxHeight, double HorizontalDistance, double IceLayerHeight,double AntennaDepth, double StraightAngle, double dummy[20]);
   
