@@ -316,11 +316,11 @@ double MultiRayAirIceRefraction::Trans_P(double thetai, double IceLayerHeight){
   return (tP);
 }
 
-////Use GSL minimiser which uses Brent's Method to find root for a given function
+////Use GSL minimiser which uses GSL Methods to find root for a given function
 double MultiRayAirIceRefraction::FindFunctionRoot(gsl_function F,double x_lo, double x_hi,const gsl_root_fsolver_type *T,double tolerance)
 {
   int status;
-  int iter = 0, max_iter = 20;
+  int iter = 0, max_iter = 40;
   //const gsl_root_fsolver_type *T;
   gsl_root_fsolver *s;
   double r = 0;
@@ -881,6 +881,7 @@ int MultiRayAirIceRefraction::MakeAtmosphere(){
 
   // flattened_h_data.clear();
   // flattened_nh_data.clear();
+  cout<<"Atmosphere has been generated "<<endl;
   
   return 0;
 }
@@ -1462,7 +1463,7 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   
   //auto t1b_air = std::chrono::high_resolution_clock::now();
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
-  double LaunchAngleAir= MultiRayAirIceRefraction::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_brent,0.000000001);
+  double LaunchAngleAir= MultiRayAirIceRefraction::FindFunctionRoot(F1,startanglelim,endanglelim,gsl_root_fsolver_bisection,0.000000001);
   //std::cout<<"Result from the minimization: Air Launch Angle: "<<LaunchAngleAir<<" deg"<<std::endl;
   
   double * GetResultsAir= MultiRayAirIceRefraction::GetAirPropagationPar(LaunchAngleAir,AirTxHeight,IceLayerHeight);
@@ -1549,11 +1550,13 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
   dummy[8]=PropagationTimeIce;
   dummy[9]=PropagationTimeAir;
   dummy[10]=LaunchAngleAir;
-  dummy[11]=IncidentAngleonAntenna;//IncidentAngleonIce;
+  dummy[11]=IncidentAngleonAntenna;
   dummy[12]=MultiRayAirIceRefraction::Trans_S(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
   dummy[13]=MultiRayAirIceRefraction::Trans_P(IncidentAngleonIce*(MultiRayAirIceRefraction::pi/180.0), IceLayerHeight);
   dummy[14]=TotalGeometricPathinAir;
   dummy[15]=TotalGeometricPathinIce;
+  dummy[16]=IncidentAngleonIce;
+  dummy[11]=IncidentAngleonAntenna;
 
 }
 
@@ -1614,7 +1617,8 @@ void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDe
 	MultiRayAirIceRefraction::GridZValue[5].push_back(dummy[2]);//5 is Total Horizontal Distance in Air
 	MultiRayAirIceRefraction::GridZValue[6].push_back(dummy[12]);//6 is Trans Coeff S
 	MultiRayAirIceRefraction::GridZValue[7].push_back(dummy[13]);//7 is Trans Coeff P
-	MultiRayAirIceRefraction::GridZValue[8].push_back(dummy[11]);//7 is Incident Angle on Ice
+	MultiRayAirIceRefraction::GridZValue[8].push_back(dummy[16]);//7 is Incident Angle on Ice
+	
       }else{
 	MultiRayAirIceRefraction::GridZValue[0].push_back(-1000);
 	MultiRayAirIceRefraction::GridZValue[1].push_back(-1000);

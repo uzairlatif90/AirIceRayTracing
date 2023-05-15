@@ -1,5 +1,8 @@
 #include "MultiRayAirIceRefraction.cc"
 
+std::vector <double> AntennaDepths;
+std::vector <int> AntennaTableAlreadyMade;
+
 void RunMultiRayCode(){
   
   ////All variables are in m here
@@ -21,12 +24,34 @@ void RunMultiRayCode(){
   double recieveAngleinIce;
   
   bool CheckSol=false;////check if solution exists or not
+
   
   if(UseTable==true){
-    
-    //MultiRayAirIceRefraction::MakeTable(IceLayerHeight,AntennaDepth);
-    MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepth*100,IceLayerHeight*100,AntennaNumber);
 
+    AntennaDepths.push_back(AntennaDepth*100);
+    
+    for(int i=0;i<AntennaDepths.size();i++){
+    if(i==0){
+      cout<<"\n Making table for Antenna "<<i<<" at "<< AntennaDepths[i]<<" cm "<<endl;
+      MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepths[i], IceLayerHeight*100, i); 
+      AntennaTableAlreadyMade.push_back(i);
+    }
+
+    bool MakeTable=true;
+    for(int j=0;j<AntennaTableAlreadyMade.size();j++){
+      if(AntennaDepths[i]==AntennaDepths[AntennaTableAlreadyMade[j]]){
+	MakeTable=false;
+      }
+    }
+     
+    if(MakeTable==true){
+      cout<<"\n Making table for Antenna "<<i<<" at "<< AntennaDepths[i] <<" cm "<<endl;
+      MultiRayAirIceRefraction::MakeRayTracingTable(AntennaDepths[i], IceLayerHeight*100, i); 
+      AntennaTableAlreadyMade.push_back(i);
+    }
+  }
+    
+   
     CheckSol=MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(AirTxHeight*100, HorizontalDistance*100 ,AntennaDepth*100, IceLayerHeight*100,0, opticalPathLengthInIce, opticalPathLengthInAir, geometricalPathLengthInIce, geometricalPathLengthInAir, launchAngle, horidist2interpnt,transmissionCoefficientS,transmissionCoefficientP,recieveAngleinIce);
   }else{
     
