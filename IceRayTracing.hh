@@ -12,6 +12,7 @@ released under GPL3.
 #include <string>
 #include <algorithm>
 #include <chrono>
+#include <vector>
 
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_math.h>
@@ -51,14 +52,14 @@ namespace IceRayTracing{
   static const double A_ice_def=1.78;
   static const double B_ice_def=-0.43;
   static const double C_ice_def=0.0132;
+  static constexpr double TransitionBoundary=0;
 
+  // const double A_ice=1.775;
+  // const double TransitionBoundary=14.9;
+  
   static double A_ice=A_ice_def;
   static double B_ice=B_ice_def;
   static double C_ice=C_ice_def;
-  static constexpr double TransitionBoundary=0;
-  // const double A_ice=1.775;
-  // const double TransitionBoundary=14.9;
-
   
  /* Get the value of the B parameter for the refractive index model */
   void SetA(double &A);
@@ -182,7 +183,7 @@ namespace IceRayTracing{
   /* function for plotting and storing all the rays */
   void PlotAndStoreRays(double x0,double z0, double z1, double x1, double zmax[2], double lvalues[4], double checkzeroes[4]);
 
-  double *IceRayTracing(double x0, double z0, double x1, double z1);
+  double *IceRayTracing(double x0, double z0, double x1, double z1,bool PlotRayPaths);
 
   /* Analytical solution describing ray paths in ice as function of depth for constant refractive index*/
   double fDnfR_Cnz(double x,void *params);
@@ -224,16 +225,17 @@ namespace IceRayTracing{
   double *DirectRayTracer(double xT, double yT, double zT, double xR, double yR, double zR);
   
   /* Function that makes interpolation tables for raytracing */
-  void MakeTable(double ShowerHitDistance, double ShowerDepth, double zT, int AntNum);
+  void MakeTable(double ShowerHitDistance, double ShowerDepth, double zR, int AntNum);
   
   /* Function that calculates the interpolated value for raytracing. The rt parameter: 0 is for D ray optical time, 1 is for D ray geometric path length,  2 is for D launch angle, 3 is for D recieve angle, 4 is D for ray attenuation, 5 is for R ray optical time, 6 is for R ray geometric path length,  7 is for R launch angle, 8 is for R recieve angle, 9 is R for ray attenuation */
-  double GetInterpolatedValue(double xR, double zR, int rtParameter,int AntNum);
+  double GetInterpolatedValue(double xT, double zT, int rtParameter,int AntNum);
 			      
   //void GetRayTracingSolutions(double RxDepth, double Distance, double TxDepth, double TimeRay[2], double PathRay[2], double LaunchAngle[2], double RecieveAngle[2], int IgnoreCh[2], double IncidenceAngleInIce[2],vector <double> xRay[2], vector <double> zRay[2]);
   void GetRayTracingSolutions(double RxDepth, double Distance, double TxDepth, double TimeRay[2], double PathRay[2], double LaunchAngle[2], double RecieveAngle[2], int IgnoreCh[2], double IncidenceAngleInIce[2], double A0, double frequency, double AttRay[2]);
 
   // Sets the number of antennas to make a table for. Use it before making the tables.
   void SetNumberOfAntennas(int numberOfAntennas);
-  
+
+  void GetFocusingFactor(double zT, double xR, double zR, double focusing[2]);
 }
 #endif
