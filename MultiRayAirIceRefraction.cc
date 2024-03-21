@@ -806,7 +806,6 @@ double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, d
 ////Get Propogation parameters for ray propagating in ice
 double * MultiRayAirIceRefraction::GetIcePropagationPar(double IncidentAngleonIce, double IceLayerHeight, double AntennaDepth, double Lvalue){
   double *output=new double[5];
-
   
   //double StartAngle=IncidentAngleonIce;
   double StartDepth=0.0;
@@ -899,7 +898,7 @@ double MultiRayAirIceRefraction::MinimizeforLaunchAngle(double x, void *params){
   // auto t1b = std::chrono::high_resolution_clock::now();
   
   double TotalHorizontalDistanceinIce=0;
-  if(AntennaDepth>0){
+  if(AntennaDepth!=0){
     double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth, Lvalue);
     TotalHorizontalDistanceinIce+=GetResultsIce[0];
     delete [] GetResultsIce;  
@@ -1617,7 +1616,8 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
 }
 
 void MultiRayAirIceRefraction::MakeTable(double IceLayerHeight, double AntennaDepth){ 
-
+  //old method of making interpolation table which uses horizontal distance instead of launch angles. Do not use this function. Use the MakeRaytracingtable function.
+  
   IceLayerHeight=IceLayerHeight/100;
   AntennaDepth=AntennaDepth/100;
 
@@ -1988,8 +1988,7 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
 
 	
     }//end of double exponent ice layer case
-  }//when there is more than one layer
-
+  }//if antenna is inside ice
   //std::cout<<"Total horizontal distance travelled by the ray in ice is  "<<TotalHorizontalDistanceInIce<<std::endl;
       
   ////define dummy/temporary variables for storing data
