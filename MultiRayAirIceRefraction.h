@@ -61,6 +61,18 @@ namespace MultiRayAirIceRefraction{
   static double C_air[5];
   static double B_air[5];
 
+  static const double A_ice_def=1.78;
+  static const double B_ice_def=-0.43;
+  static const double C_ice_def=0.0132;
+  static constexpr double TransitionBoundary=0;
+
+  //static double A_ice_def=1.775;
+  //static constexpr double TransitionBoundary=14.9;
+
+  static double A_ice=A_ice_def;
+  static double B_ice=B_ice_def;
+  static double C_ice=C_ice_def;
+  
   ////define variables which are going to be used by GSL for linear interpolation
   static gsl_interp_accel * accelerator;
   static gsl_spline *spline;
@@ -73,9 +85,6 @@ namespace MultiRayAirIceRefraction{
 
   ////This Function reads in the tavulated refractive index profile from the GDAS Atmosphere.dat file and fills in the nh_data, lognh_data and h_data vectors
   int readnhFromFile();
-
-  ////Set the value of the asymptotic parameter of the ice refractive index model
-  static const double A_ice=1.78;
 
   ////Get the value of the B parameter for the ice refractive index model
   double GetB_ice(double z);

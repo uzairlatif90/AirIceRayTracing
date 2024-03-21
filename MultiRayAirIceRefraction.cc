@@ -151,7 +151,17 @@ double MultiRayAirIceRefraction::GetB_ice(double z){
   double zabs=fabs(z);
   double B=0;
 
-  B=-0.43;
+  //B=-0.43;
+  B=MultiRayAirIceRefraction::B_ice;
+
+  if(MultiRayAirIceRefraction::TransitionBoundary!=0){
+    if(z<=MultiRayAirIceRefraction::TransitionBoundary){
+      B=-0.5019;
+    }else{
+      B=-0.448023;
+    }
+  }
+  
   return B;
 }
 
@@ -160,7 +170,17 @@ double MultiRayAirIceRefraction::GetC_ice(double z){
   double zabs=fabs(z);
   double C=0;
   
-  C=0.0132;
+  //C=0.0132;
+  C=MultiRayAirIceRefraction::C_ice;
+  
+  if(MultiRayAirIceRefraction::TransitionBoundary!=0){
+    if(z<=MultiRayAirIceRefraction::TransitionBoundary){
+      C=0.03247;
+    }else{
+      C=0.02469;
+    }
+  }
+  
   return C;
 }
 
@@ -332,8 +352,6 @@ double MultiRayAirIceRefraction::FindFunctionRoot(gsl_function F,double x_lo, do
   //printf ("using %s method\n", gsl_root_fsolver_name (s));
   //printf ("%5s [%9s, %9s] %9s %9s\n","iter", "lower", "upper", "root", "err(est)");
 
-  //cout<<" we are here "<<endl;
-  //cout<<x_lo<<" "<<x_hi<<" "<<r<<" "<<iter<<endl; 
   do
     {
       iter++;
@@ -349,8 +367,6 @@ double MultiRayAirIceRefraction::FindFunctionRoot(gsl_function F,double x_lo, do
       }
     }
   while (status == GSL_CONTINUE && iter < max_iter);
-
-  //cout<<"we are here now "<<endl;
   
   gsl_root_fsolver_free (s);
 
@@ -791,15 +807,58 @@ double * MultiRayAirIceRefraction::GetAirPropagationPar(double LaunchAngleAir, d
 double * MultiRayAirIceRefraction::GetIcePropagationPar(double IncidentAngleonIce, double IceLayerHeight, double AntennaDepth, double Lvalue){
   double *output=new double[5];
 
-  double StartAngle=IncidentAngleonIce;
+  
+  //double StartAngle=IncidentAngleonIce;
   double StartDepth=0.0;
   double StopDepth=AntennaDepth;
   double nzStopDepth=Getnz_ice(StopDepth);
   
-  double TotalHorizontalDistance=GetRayHorizontalPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
-  double ReceiveAngle=asin(Lvalue/nzStopDepth)*(180/MultiRayAirIceRefraction::pi);
-  double PropagationTime=GetRayPropagationTime(A_ice, StopDepth, StartDepth, Lvalue, 0);
-  double TotalGeometricPath=GetRayGeometricPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+  double TotalHorizontalDistance=0;
+  double ReceiveAngle=0;
+  double PropagationTime=0;
+  double TotalGeometricPath=0;
+
+  if(MultiRayAirIceRefraction::TransitionBoundary==0){
+    
+    nzStopDepth=Getnz_ice(StopDepth);
+    TotalHorizontalDistance=GetRayHorizontalPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+    ReceiveAngle=asin(Lvalue/nzStopDepth)*(180/MultiRayAirIceRefraction::pi);
+    PropagationTime=GetRayPropagationTime(A_ice, StopDepth, StartDepth, Lvalue, 0);
+
+    TotalGeometricPath=GetRayGeometricPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+  }else{
+
+    if(abs(AntennaDepth)>abs(MultiRayAirIceRefraction::TransitionBoundary)){
+      
+      StartDepth=0;
+      StopDepth=MultiRayAirIceRefraction::TransitionBoundary;
+
+      nzStopDepth=Getnz_ice(StopDepth);
+      TotalHorizontalDistance+=GetRayHorizontalPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      ReceiveAngle=asin(Lvalue/nzStopDepth)*(180/MultiRayAirIceRefraction::pi);
+      PropagationTime+=GetRayPropagationTime(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      TotalGeometricPath+=GetRayGeometricPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      
+      StartDepth=MultiRayAirIceRefraction::TransitionBoundary;
+      StopDepth=AntennaDepth;
+
+      nzStopDepth=Getnz_ice(StopDepth);
+      TotalHorizontalDistance+=GetRayHorizontalPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      ReceiveAngle=asin(Lvalue/nzStopDepth)*(180/MultiRayAirIceRefraction::pi);
+      PropagationTime+=GetRayPropagationTime(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      TotalGeometricPath+=GetRayGeometricPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+    }else{
+      StartDepth=0;
+      StopDepth=AntennaDepth;
+
+      nzStopDepth=Getnz_ice(StopDepth);
+      TotalHorizontalDistance+=GetRayHorizontalPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      ReceiveAngle=asin(Lvalue/nzStopDepth)*(180/MultiRayAirIceRefraction::pi);
+      PropagationTime+=GetRayPropagationTime(A_ice, StopDepth, StartDepth, Lvalue, 0);
+      TotalGeometricPath+=GetRayGeometricPath(A_ice, StopDepth, StartDepth, Lvalue, 0);
+    }
+    
+  }
   
   output[0]=TotalHorizontalDistance;
   output[1]=ReceiveAngle;
@@ -819,7 +878,7 @@ double MultiRayAirIceRefraction::MinimizeforLaunchAngle(double x, void *params){
   double IceLayerHeight = p->icelayerheight;
   double AntennaDepth = p->antennadepth;
   double HorizontalDistance = p->horizontaldistance;
-  //std::cout<<"values are "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" "<<HorizontalDistance<<std::endl;
+  //std::cout<<"mininimzer input values are "<<AirTxHeight<<" "<<IceLayerHeight<<" "<<AntennaDepth<<" "<<HorizontalDistance<<std::endl;
 
   //auto t1a = std::chrono::high_resolution_clock::now();
   
@@ -840,14 +899,11 @@ double MultiRayAirIceRefraction::MinimizeforLaunchAngle(double x, void *params){
   // auto t1b = std::chrono::high_resolution_clock::now();
   
   double TotalHorizontalDistanceinIce=0;
-  if(AntennaDepth!=0){
+  if(AntennaDepth>0){
     double * GetResultsIce=GetIcePropagationPar(IncidentAngleonIce, IceLayerHeight, AntennaDepth, Lvalue);
-    TotalHorizontalDistanceinIce=GetResultsIce[0];
-    delete [] GetResultsIce;
-  }else{
-    TotalHorizontalDistanceinIce=0;
+    TotalHorizontalDistanceinIce+=GetResultsIce[0];
+    delete [] GetResultsIce;  
   }
-
   //std::cout<<TotalHorizontalDistanceinIce<<" "<<TotalHorizontalDistanceinAir<<" "<< HorizontalDistance<<std::endl;
   double checkmin=(HorizontalDistance-(TotalHorizontalDistanceinIce + TotalHorizontalDistanceinAir) );
 
@@ -919,7 +975,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
   bool CheckSolution=false;
   double checkminimisation=dummy[1]-HorizontalDistance;
 
-  //cout<<"raytrace arguments are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<AntennaDepth<<" "<<IceLayerHeight<<" "<<thR<<endl;
+  //std::cout<<"raytrace arguments are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<AntennaDepth<<" "<<IceLayerHeight<<" "<<thR<<endl;
   if((fabs(dummy[1]-HorizontalDistance)/HorizontalDistance<0.01 && HorizontalDistance<=100) || (fabs(dummy[1]-HorizontalDistance)<1 && HorizontalDistance>100)){
     CheckSolution=true;
   }
@@ -927,7 +983,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint(double S
     CheckSolution=false;
   }
 
-  //cout<<"raytrace results are "<<dummy[1]<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<transmissionCoefficientS<<" "<<transmissionCoefficientP<<" "<<CheckSolution<<endl;
+  //std::cout<<"raytrace results are "<<dummy[1]<<" "<<opticalPathLengthInIce<<" "<<opticalPathLengthInAir<<" "<<launchAngle<<" "<<horizontalDistanceToIntersectionPoint<<" "<<transmissionCoefficientS<<" "<<transmissionCoefficientP<<" "<<CheckSolution<<std::endl;
   
   return CheckSolution;
 
@@ -1164,7 +1220,7 @@ int MultiRayAirIceRefraction::GetParValues(double AntennaNumber, double AirTxHei
     
   }else{///Do extrapolation as the given THD from the user does NOT lie in the range of values
   ////check if the total horizontal distance is outside 100% of the whole total horizontal distance range for that Tx height. If that is the case then do not extrapolate and return a no solution number
-    //cout<<" we are here 1 "<<endl;
+    
     //   double DistanceRange=fabs(MaxTotalHorizontalDistance-MinTotalHorizontalDistance);
 
   //   if(TotalHorizontalDistance>MaxTotalHorizontalDistance){
@@ -1408,7 +1464,7 @@ bool MultiRayAirIceRefraction::GetHorizontalDistanceToIntersectionPoint_Table(do
 
 void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double HorizontalDistance, double IceLayerHeight,double AntennaDepth, double StraightAngle, double dummy[20]){
     
-  //std::cout<<"parameters are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<std::endl;
+  std::cout<<"main function parameters are "<<AirTxHeight<<" "<<HorizontalDistance<<" "<<IceLayerHeight<<" "<<AntennaDepth<<std::endl;
   ////For recording how much time the process took
   //auto t1b = std::chrono::high_resolution_clock::now();  
 
@@ -1420,7 +1476,7 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
     params1 = { AirTxHeight, IceLayerHeight, AntennaDepth, HorizontalDistance};
   }
   if(AntennaDepth<0){
-    params1 = { AirTxHeight, IceLayerHeight, -AntennaDepth, HorizontalDistance};
+    params1 = { AirTxHeight, IceLayerHeight,-AntennaDepth, HorizontalDistance};
   }
   F1.function = & MultiRayAirIceRefraction::MinimizeforLaunchAngle;
   F1.params = &params1;
@@ -1459,7 +1515,7 @@ void MultiRayAirIceRefraction::Air2IceRayTracing(double AirTxHeight, double Hori
     //startanglelim=90.05;
     endanglelim=90.05;
   }
-  //cout<<"angles are "<<startanglelim<<" "<<endanglelim<<" "<<StraightAngle<<endl;
+  //std::cout<<"angles are "<<startanglelim<<" "<<endanglelim<<" "<<StraightAngle<<std::endl;
   
   //auto t1b_air = std::chrono::high_resolution_clock::now();
   ////Do the minimisation and get the value of the L parameter and the launch angle and then verify to see that the value of L that we got was actually a root of fDa function.
@@ -1806,7 +1862,7 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
     if(ilayer==MultiRayAirIceRefraction::MaxLayers-SkipLayersAbove-1){
       StartAngle=180-RayLaunchAngleInAir;
     }
-    //std::cout<<ilayer<<" Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<std::endl;
+    //std::cout<<ilayer<<" Starting n(h)="<<Start_nh<<" StartingHeight="<<StartHeight<<" ,StoppingHeight="<<StopHeight<<" ,RayLaunchAngle"<<StartAngle<<std::endl;
 	
     ////Get the hit parameters from the function. The output is:
     //// How much horizontal distance did the ray travel in the layer
@@ -1821,50 +1877,119 @@ void MultiRayAirIceRefraction::GetRayTracingSolutions(double RayLaunchAngleInAir
     ////dont forget to delete the pointer!
     delete []GetHitPar;
   }
-
   
   double IncidentAngleonIce=StartAngle;
-  //std::cout<<"Total horizontal distance travelled by the ray using Multiple Layer fitting is "<<TotalHorizontalDistance<<std::endl;
 
-  ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
+  ////Define variables for ray propogation through mutliple layers in the atmosphere
+  Start_nh=0;
+  double StartDepth=0;
+  double StopDepth=0;
+  StartAngle=0;
   double TotalHorizontalDistanceInIce=0;
-  double RecievdAngleInIce=0;
-  //double LvalueIce=GetHitPar[2];
-  double TimeInIce=0;
   double TotalGeometricPathInIce=0;
+  double TimeInIce=0;  
+  double RecievdAngleInIce=0;
   
   if(InIce==true){
-
-    //cout<<" we are in here "<<InIce<<endl;
+    
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////Section for propogating the ray through the ice
-            
-    ////Set the starting depth of the ray for propogation to at the ice surface
-    double StartDepth=0.0;
-    ////Since we have the starting height of the ice layer we can find out the refactive index of air at that height
-    Start_nh=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
+    if(MultiRayAirIceRefraction::TransitionBoundary==0){
+      ////Set the starting depth of the ray for propogation to at the ice surface
+      StartDepth=0.0;
+      ////Since we have the starting height of the ice layer we can find out the refactive index of air at that height
+      Start_nh=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
 	
-    ////Set the stopping depth of the ray for propogation to be the depth of the antenna
-    StopHeight=AntennaDepth;
-    ////Set the initial launch angle or the angle of incidence of the ray
-    StartAngle=IncidentAngleonIce;
-    //std::cout<<"Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingDepth="<<StartDepth<<" ,StoppingDepth="<<AntennaDepth<<" ,RayLaunchAngle="<<StartAngle<<std::endl;
+      ////Set the stopping depth of the ray for propogation to be the depth of the antenna
+      StopDepth=-AntennaDepth;
+      ////Set the initial launch angle or the angle of incidence of the ray
+      StartAngle=IncidentAngleonIce;
+      //std::cout<<"Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingDepth="<<StartDepth<<" ,StoppingDepth="<<AntennaDepth<<" ,RayLaunchAngle="<<StartAngle<<std::endl;
     
-    ////Get the hit parameters from the function. The output is:
-    //// How much horizontal distance did the ray travel through ice to hit the antenna
-    //// The angle of reciept/incidence at the end at the antenna
-    //// The value of the L parameter for whole atmosphere fit
-    double *GetHitPar=MultiRayAirIceRefraction::GetLayerHitPointPar(Start_nh, -AntennaDepth,StartDepth, StartAngle, 0);
-      
-    ////SLF here stands for Single Layer Fitting. These variables store the hit parameters
-    TotalHorizontalDistanceInIce=GetHitPar[0];
-    RecievdAngleInIce=GetHitPar[1];
-    //double LvalueIce=GetHitPar[2];
-    TimeInIce=GetHitPar[3];
-    TotalGeometricPathInIce=GetHitPar[4];
+      ////Get the hit parameters from the function. The output is:
+      //// How much horizontal distance did the ray travel through ice to hit the antenna
+      //// The angle of reciept/incidence at the end at the antenna
+      //// The value of the L parameter for whole atmosphere fit
+      double *GetHitPar=MultiRayAirIceRefraction::GetLayerHitPointPar(Start_nh, StopDepth,StartDepth, StartAngle, 0);
 
-    delete[] GetHitPar;
-  }
+      TotalHorizontalDistanceInIce+=GetHitPar[0];
+      StartAngle=GetHitPar[1];
+      TimeInIce+=GetHitPar[3];
+      TotalGeometricPathInIce+=GetHitPar[4];
+      RecievdAngleInIce=GetHitPar[1];
+    
+      ////dont forget to delete the pointer!
+      delete []GetHitPar;
+    }else{//working with double exponent layer now
+
+      if(abs(AntennaDepth)>abs(MultiRayAirIceRefraction::TransitionBoundary)){//Antenna is in second layer
+	////Start loop over the atmosphere layers and analyticaly propagate the ray through the atmosphere
+	for(int ilayer=0;ilayer<2;ilayer++){
+	  ////Set the starting height of the ray for propogation for that layer
+	  if(ilayer==0){
+	    ////If this is the first layer then set the start height to be the height of the source
+	    StartAngle=IncidentAngleonIce;
+	    StartDepth=0.0;
+	    Start_nh=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
+	    ////If this is NOT the last layer then set the stopping height to be the end height of the layer
+	    StopDepth=MultiRayAirIceRefraction::TransitionBoundary;
+	  }else{
+	    ////If this is any layer after the first layer then set the start height to be the starting height of the layer
+	    StartDepth=MultiRayAirIceRefraction::TransitionBoundary;
+	    Start_nh=MultiRayAirIceRefraction::Getnz_ice(StartDepth);
+	    ////If this is the last layer then set the stopping height to be the height of the ice layer
+	    StopDepth=-AntennaDepth;
+	  }
+	  
+	  ////Get the hit parameters from the function. The output is:
+	  //// How much horizontal distance did the ray travel in the layer
+	  //// The angle of reciept/incidence at the end or the starting angle for propogation through the next layer
+	  //// The value of the L parameter for that layer
+	  double* GetHitPar=MultiRayAirIceRefraction::GetLayerHitPointPar(Start_nh, StopDepth, StartDepth, StartAngle, 0);
+	  TotalHorizontalDistanceInIce+=GetHitPar[0];
+	  StartAngle=GetHitPar[1];
+	  TimeInIce+=GetHitPar[3];
+	  TotalGeometricPathInIce+=GetHitPar[4];
+	  RecievdAngleInIce=GetHitPar[1];
+
+	  //std::cout<<TotalHorizontalDistanceInIce<<" "<<StartAngle<<" "<<TimeInIce<<" "<<TotalGeometricPathInIce<<" "<<RecievdAngleInIce<<std::endl;
+	  ////dont forget to delete the pointer!
+	  delete []GetHitPar;
+	}
+
+      }else{//Antenna is above second layer
+
+	////Set the starting depth of the ray for propogation to at the ice surface
+	StartDepth=0.0;
+	////Since we have the starting height of the ice layer we can find out the refactive index of air at that height
+	Start_nh=MultiRayAirIceRefraction::Getnz_air(IceLayerHeight);
+	
+	////Set the stopping depth of the ray for propogation to be the depth of the antenna
+	StopDepth=-AntennaDepth;
+	////Set the initial launch angle or the angle of incidence of the ray
+	StartAngle=IncidentAngleonIce;
+	//std::cout<<"Starting n(h)="<<Start_nh<<" ,A="<<A<<" ,B="<<B<<" ,C="<<C<<" StartingDepth="<<StartDepth<<" ,StoppingDepth="<<AntennaDepth<<" ,RayLaunchAngle="<<StartAngle<<std::endl;
+    
+	////Get the hit parameters from the function. The output is:
+	//// How much horizontal distance did the ray travel through ice to hit the antenna
+	//// The angle of reciept/incidence at the end at the antenna
+	//// The value of the L parameter for whole atmosphere fit
+	double *GetHitPar=MultiRayAirIceRefraction::GetLayerHitPointPar(Start_nh, StopDepth,StartDepth, StartAngle, 0);
+
+	TotalHorizontalDistanceInIce+=GetHitPar[0];
+	StartAngle=GetHitPar[1];
+	TimeInIce+=GetHitPar[3];
+	TotalGeometricPathInIce+=GetHitPar[4];
+	RecievdAngleInIce=GetHitPar[1];
+    
+	////dont forget to delete the pointer!
+	delete []GetHitPar;
+      }
+
+	
+    }//end of double exponent ice layer case
+  }//when there is more than one layer
+
   //std::cout<<"Total horizontal distance travelled by the ray in ice is  "<<TotalHorizontalDistanceInIce<<std::endl;
       
   ////define dummy/temporary variables for storing data
